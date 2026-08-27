@@ -1,0 +1,167 @@
+# config_files/node_config.yaml
+toy:
+  default_shape:  # Toy might not have 'shapes', so we use a default key
+  # Model Architecture Parameters
+  architecture:
+    latent_dim: 2
+    hidden_dim: 256
+  # Integration Parameters (for the RK4 solver)
+  integration:
+    method: 'rk4'
+    step_size: 0.05
+  # Data Load and Preparation
+  dataset:
+    type: 'toy'            # 'lasa' or 'toy'
+    shape_name: 'None'     # Used for finding the .mat or .p file
+    origin_dir: './datasets/toy_example'
+    trajectory_number: 7  # the number of total demonstration files
+    test_id: 0  # the index of the demonstration used for testing
+    r2_letter: "J"
+    s2_letter: "C"
+    interpolation_points: 500
+    min_window: 20
+    max_window: 480
+    samples_per_path: 50
+    time_steps: 50
+    save_dir: './node/data/toy_processed'
+    train_rat: 0.7715
+    val_rat: 0.087
+    model_dir: './models/node/toy_example'
+    model_name: 'NODE_{shape}RiemannianMSE_EGI'
+    model_train_curves_dir: './node/training/training_curves'
+    model_train_logs_dir: './node/training/training_logs'
+
+  # Training Hyperparameters (for the train loop!)
+  training:
+    learning_rate: 0.001
+    batch_size: 32
+    epochs: 10 #4000
+    metric_scale_energy: 1e-8
+    safe_baseline: 3867617.82
+    scheduler:
+      base_scale: 0.0001   # 1e-4
+      ramp_start: 500      # Epoch when goal/energy pressure begins
+      ramp_length: 2500    # How many epochs it takes to reach max weights
+      w_imit_target: 1.0   # Constant multiplier for imitation
+      w_goal_start: 1.0    # What goal weight starts at when ramp begins
+      w_goal_target: 50.0  # What goal weight ramps up to
+      w_ener_target: 1.0   # What energy weight ramps up to
+
+lasa:
+  # --- COMMON DATASET SETTINGS ---
+  # Data Load and Preparation
+  dataset:
+    type: 'lasa'             # 'lasa' or 'toy'
+    shape_name: '{shape}'     # Used for finding the .mat or .p file
+    origin_dir: './datasets/lasa'
+    origin_file: '{shape}_UQ.mat'
+    trajectory_number: 7  # the number of total demonstration files
+    save_dir: './node/data/{shape}_processed'
+    min_window: 20
+    max_window: 980
+    samples_per_path: 50
+    time_steps: 50
+    train_rat: 0.7715
+    val_rat: 0.087
+    model_dir: './models/node/lasa'
+    model_name: 'NODE_{shape}RiemannianMSE_EGI'
+    model_train_curves_dir: './node/training/training_curves'
+    model_train_logs_dir: './node/training/training_logs'
+
+  # --- SHAPE SPECIFIC HYPERPARAMETERS ---
+  N:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001   # The shrink ray
+        ramp_start: 500
+        ramp_length: 2500
+        w_imit_target: 1.0   # Constant multiplier for imitation
+        w_goal_start: 1.0    # What goal weight starts at when ramp begins
+        w_goal_target: 50.0  # What goal weight ramps up to
+        w_ener_target: 1.0   # What energy weight ramps up to
+  Angle:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001   # 1e-4
+        ramp_start: 500      # Epoch when goal/energy pressure begins
+        ramp_length: 2500    # How many epochs it takes to reach max weights
+        w_imit_target: 1.0   # Constant multiplier for imitation
+        w_goal_start: 1.0    # What goal weight starts at when ramp begins
+        w_goal_target: 50.0  # What goal weight ramps up to
+        w_ener_target: 1.0   # What energy weight ramps up to
+  P:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001   # The shrink ray
+        ramp_start: 500
+        ramp_length: 2500
+        w_imit_target: 1.0   # Constant multiplier for imitation
+        w_goal_start: 1.0    # What goal weight starts at when ramp begins
+        w_goal_target: 50.0  # What goal weight ramps up to
+        w_ener_target: 1.0   # What energy weight ramps up to
+  Leaf_1:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001   # The shrink ray
+        ramp_start: 500
+        ramp_length: 2500
+        w_imit_target: 1.0   # Constant multiplier for imitation
+        w_goal_start: 1.0    # What goal weight starts at when ramp begins
+        w_goal_target: 50.0  # What goal weight ramps up to
+        w_ener_target: 1.0   # What energy weight ramps up to

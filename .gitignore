@@ -1,0 +1,29 @@
+# 1. Virtual Environments
+venv/
+env/
+.env/
+
+# 2. Python Caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 3. Training Logs & Plots
+# (Adjust these paths if your folders are named differently)
+node/training/training_logs/*.txt
+node/training/training_curves/*.svg
+node/training/training_curves/*.png
+*.log
+
+# 4. Processed Data & Weights
+# Ignore dynamically generated dataset folders and PyTorch models
+node/data/*_processed/
+#*.pt
+*.pth
+*.pkl
+#dataset_baselines.json
+
+# 5. IDEs and OS Files
+.vscode/
+.idea/
+.DS_Store

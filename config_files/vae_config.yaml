@@ -1,0 +1,28 @@
+# config_files/vae_config.yaml
+toy:
+  architecture:
+    layers: [5, 200, 100, 2]  # [5, 200, 100, 2] for the old Toy VAE
+    pos_dof: 2                # 2 for the Toy VAE
+    qua_dof: 3                # 3 for the Toy VAE
+    sigma_z: 1.0
+    beta_scale: 10
+  training_artifacts:
+    batch_size: 128
+    model_path: './models/vae/toy_example/VAE_toy.pt'
+    cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+  visualization:
+    latent_frame: 10
+
+lasa:
+  architecture:
+    layers: [7, 200, 100, 2]  # [7, 200, 100, 2] for the lasa VAE
+    pos_dof: 3                # 3 for the lasa VAE
+    qua_dof: 4                # 4 for the lasa VAE
+    sigma_z: 1.0
+    beta_scale: 1
+  training_artifacts:
+    batch_size: 128
+    model_path: './models/vae/lasa/VAE_{shape}.pt'
+    cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+  visualization:
+    latent_frame: 15
