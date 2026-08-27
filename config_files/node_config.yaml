@@ -106,7 +106,7 @@ lasa:
     training:
       learning_rate: 0.001
       batch_size: 32
-      epochs: 2500
+      epochs: 10
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       scheduler:
