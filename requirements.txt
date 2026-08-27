@@ -1,8 +1,8 @@
 # --- Main Project Dependencies ---
 # --- Deep Learning (PyTorch) ---
-torch==2.4.1
-torchvision==0.19.1
-torchaudio==2.4.1
+torch>=2.6.0
+torchvision>=0.21.0
+torchaudio>=2.6.0
 torchdiffeq==0.2.5
 torchplot==0.2.0
 

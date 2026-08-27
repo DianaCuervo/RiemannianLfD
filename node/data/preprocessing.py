@@ -75,11 +75,11 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
             # 1. Choose a "Tier" based on 30/50/20 distribution
             roll = random.random()
             if roll < 0.35:  # SHORT (Precision)
-                win_size = random.randint(min_window, (num_steps/2)-100)
+                win_size = random.randint(min_window, (num_steps//2)-100)
             elif roll < 0.70:  # MEDIUM (Flow)
-                win_size = random.randint(((num_steps/2)-100) + 1, (num_steps/2)+100)
+                win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
             else:  # LONG (Global context)
-                win_size = random.randint(((num_steps/2)+100)+1, max_window)
+                win_size = random.randint(((num_steps//2)+100)+1, max_window)
 
             # 2. Pick a random start point
             if num_steps <= win_size:
