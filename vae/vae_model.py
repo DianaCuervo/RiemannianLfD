@@ -123,7 +123,7 @@ class VAE(nn.Module):
             m = torch.einsum("bji,bjk->bik", j_mu, j_mu)
             m2 = torch.einsum("bji,bjk->bik", j_std.squeeze(0), j_std.squeeze(0))
             m3 = torch.einsum("bji,bjk->bik", j_std_qua.squeeze(0), j_std_qua.squeeze(0))
-            metric = (m3 + m2 + m).detach().numpy()
+            metric = (m3 + m2 + m).detach().cpu().numpy()
         else:
             mu_pos, mu_qua = self.decode(points, train_rbf=True, jacobian=False)  # BxNxD, BxNxDx(d)
             std = self.dec_std_pos(points, jacobian=False)  # BxNxD, BxNxDx(d)

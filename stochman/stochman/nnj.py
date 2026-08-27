@@ -534,7 +534,8 @@ class RBF(nn.Module):
 
     def forward(self, x: torch.Tensor, jacobian: bool = False):
         D2 = self.__dist2__(x)  # (batch)-by-|x|-by-|points|
-        val = torch.exp(-self.beta * D2)  # (batch)-by-|x|-by-|points|
+        #val = torch.exp(-self.beta * D2)  # (batch)-by-|x|-by-|points|
+        val = torch.exp(-self.beta.to(D2.device) * D2)  # (batch)-by-|x|-by-|points|
 
         if jacobian:
             J = self._jacobian(x, val)
@@ -542,7 +543,8 @@ class RBF(nn.Module):
         return val
 
     def _jacobian(self, x: torch.Tensor, val: torch.Tensor) -> Jacobian:
-        t1 = -2.0 * self.beta * val  # BxNxM
+        #t1 = -2.0 * self.beta * val  # BxNxM
+        t1 = -2.0 * self.beta.to(val.device) * val  # BxNxM
         t2 = x.unsqueeze(1) - self.points.unsqueeze(0)
         jac = t1.unsqueeze(-1) * t2
         return jacobian(jac, JacType.FULL)
