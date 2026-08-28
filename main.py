@@ -5,6 +5,7 @@ import copy
 import sys
 import os
 import json
+
 # --- NEW ABSOLUTE IMPORTS ---
 from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
@@ -14,6 +15,7 @@ from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_traj
     plot_save_training_results
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
 from node.utils.logger import ConsoleLogger  # (or wherever you saved it)
+from node.evaluation.node_test import load_trained_node, test_node
 
 # Load config files fn
 def load_and_filter_config(file_path, dataset, shape=None):
@@ -122,6 +124,11 @@ def main():
         train_ratio=node_cfg['dataset']['train_rat'],
         val_ratio=node_cfg['dataset']['val_rat'],
     )
+    ### Visualization of Manifold with processed demonstrations
+    # l_max = vae_cfg['visualization']['latent_frame']
+    # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
+    # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
+    # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
 
     if args.mode == 'train':
         ### TRAIN NODE!
@@ -188,12 +195,38 @@ def main():
             filename=model_name + "_Training-Curves.svg"
         )
     elif args.mode == 'test':
-        print("\nTo Be Completed!")
-        ### Visualization of Manifold with processed demonstrations
-        # l_max = vae_cfg['visualization']['latent_frame']
-        # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
-        # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
-        # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        # 1. Figure out where the model is saved based on the config
+        model_dir = node_cfg['dataset'].get('model_dir', f"./models/node/{args.dataset}")
+        model_path = os.path.join(model_dir, f"{model_name}.pth")
+        results_space = f"{dataset_type}"
+        if dataset_type == "lasa":
+            results_space = f"{dataset_shape}"
+
+
+        l_max = vae_cfg['visualization']['latent_frame']
+        test_results_dir = node_cfg['dataset'].get('model_test_results_dir', f"./results/node/{args.dataset}")
+        results_path = os.path.join(test_results_dir, f"{model_name}")
+
+        # 2. Load the trained NODE
+        trained_model = load_trained_node(
+            model_path=model_path,
+            latent_dim=latent_d,
+            hidden_dim=hidden_d,
+            device=device
+        )
+
+        # 3. Test function
+        test_node(
+            trained_model=trained_model,
+            vae_model=vae,
+            test_loader=test_loader,
+            save_dir=results_path,
+            device=device,
+            space_name=results_space.capitalize(),
+            latent_frame=l_max
+        )
     elif args.mode == 'benchmark':
         print("\nTo Be Completed!")
 

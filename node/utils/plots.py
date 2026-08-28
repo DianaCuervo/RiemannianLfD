@@ -4,6 +4,8 @@ import matplotlib
 matplotlib.use('Qt5Agg')  # Forces the visual popup
 import matplotlib.pyplot as plt
 import os
+import random
+
 from vae.vae_model import get_M
 
 
@@ -285,18 +287,19 @@ def plot_trajectories_on_manifold(vae, dataloader, space_name="Latent Space", la
     plt.show()
 
 ### Plot fns for vae testing
-def visualize_metric(vae, space_name, latent_frame=10):
+def visualize_metric(vae, space_name, latent_frame):
     #model.eval()
     vae.eval()
 
     print("Printing Riemannian Manifold...")
 
     # Plot the points
-    plt.figure(figsize=(latent_frame+2, latent_frame+2))
+    frame = latent_frame+5
+    plt.figure(figsize=(frame, frame))
 
     # 1. Plot Background Energy (Rough approximation using metric determinant)
-    x_range = np.linspace(-latent_frame, latent_frame, 100)
-    y_range = np.linspace(-latent_frame, latent_frame, 100)
+    x_range = np.linspace(-frame, frame, 100)
+    y_range = np.linspace(-frame, frame, 100)
     xx, yy = np.meshgrid(x_range, y_range)
     grid_pts = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
 
@@ -317,7 +320,7 @@ def visualize_metric(vae, space_name, latent_frame=10):
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.axis('equal')#, adjustable='box')  # Keeps the scale 1:1 so circles look like circles
 
-    plt.show()
+    #plt.show()
 
 ### Plot fns for node training
 # Plotting Train Curves
@@ -364,7 +367,7 @@ def plot_training_results(history):
     plt.tight_layout()
     plt.show()
 
-
+# Saving Train Curves plots
 def plot_save_training_results(history, save_dir=None, filename="training_results.svg"):
     """
     history: dict containing 'train_loss', 'val_imit', 'val_ener', etc.
@@ -421,7 +424,7 @@ def plot_save_training_results(history, save_dir=None, filename="training_result
 
 ### Plot fns for node testing
 #Visualization functions for proxy-geodesics
-def visualize_path_comparison(model, vae, test_loader, num_samples=10):
+def visualize_path_comparison(model, vae, test_loader, space_name, latent_frame, num_samples=10):
     model.eval()
     vae.eval()
 
@@ -447,16 +450,17 @@ def visualize_path_comparison(model, vae, test_loader, num_samples=10):
     #print("new z_target shape: " + str( z_target.shape))
 
     # Create plot with predetermined size
-    plt.figure(figsize=(12, 12))
+    frame = latent_frame+5
+    plt.figure(figsize=(frame, frame))
 
     # 1. Plot Background Energy (Rough approximation using metric determinant)
-    x_range = np.linspace(-10, 10, 100)
-    y_range = np.linspace(-10, 10, 100)
+    x_range = np.linspace(-frame, frame, 100)
+    y_range = np.linspace(-frame, frame, 100)
     xx, yy = np.meshgrid(x_range, y_range)
     grid_pts = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32).to(p1.device)
 
     with torch.no_grad():
-        G = torch.tensor(get_M(vae, grid_pts)[2])
+        G = get_M(vae, grid_pts)[2].clone().detach()
         # Use determinant as a proxy for "Cost/Uncertainty"
         det_G = torch.det(G).cpu().numpy().reshape(xx.shape)
     #print("shape G: " + str(G.shape))
@@ -464,7 +468,7 @@ def visualize_path_comparison(model, vae, test_loader, num_samples=10):
     # Clip values to be at least 1e-10
     safe_det = np.clip(det_G, 1e-10, None)
     cp = plt.contourf(xx, yy, np.log10(safe_det), cmap='YlOrRd', alpha=0.3)
-    plt.colorbar(cp)
+    plt.colorbar(cp, label='Magnification Factor')
 
     for i in range(num_samples):
 
@@ -481,14 +485,15 @@ def visualize_path_comparison(model, vae, test_loader, num_samples=10):
         if i==0:
             plt.legend(fontsize='small')
 
-    plt.title(f"Samples vs Predictions for " + str(num_samples) + " samples")
+    plt.title(f"Samples vs Predictions for {num_samples} samples of the {space_name}")
+
     plt.xlabel('z1')
     plt.ylabel('z2')
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.axis('equal')# Keeps the scale 1:1 so circles look like circles
-    plt.show()
+    #plt.show()
 
-def visualize_random_points_comparison(model, vae, test_loader):
+def visualize_random_points_comparison(model, vae, test_loader, space_name, latent_frame):
     model.eval()
     vae.eval()
 
@@ -529,7 +534,8 @@ def visualize_random_points_comparison(model, vae, test_loader):
     print("Predicted path goal: (" + str(x[-1]) + ", " + str(y[-1]) +  ")")
 
     # Plot the curve
-    plt.figure(figsize=(12, 12))
+    frame = latent_frame+5
+    plt.figure(figsize=(frame, frame))
     plt.plot(x, y, label=f'Test trajectory', linewidth=2, color='black')
     plt.plot(z_target[:, 0].detach().numpy(), z_target[:, 1].detach().numpy(), 'k--', label='Robot Demo', alpha=0.6, color='black')
 
@@ -547,13 +553,13 @@ def visualize_random_points_comparison(model, vae, test_loader):
     plt.text(p2[0].detach().numpy(), p2[1].detach().numpy(), '({:.2f}, {:.2f})'.format(p2[0].detach().numpy(), p2[1].detach().numpy()))  # Add text goal
 
     # 1. Plot Background Energy (Rough approximation using metric determinant)
-    x_range = np.linspace(-10, 10, 100)
-    y_range = np.linspace(-10, 10, 100)
+    x_range = np.linspace(-frame, frame, 100)
+    y_range = np.linspace(-frame, frame, 100)
     xx, yy = np.meshgrid(x_range, y_range)
     grid_pts = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32).to(p1_test.device)
 
     with torch.no_grad():
-        G = torch.tensor(get_M(vae, grid_pts.clone())[2])
+        G = get_M(vae, grid_pts)[2].clone().detach()
         # Use determinant as a proxy for "Cost/Uncertainty"
         det_G = torch.det(G).cpu().numpy().reshape(xx.shape)
     #print("shape G: " + str(G.shape))
@@ -561,13 +567,40 @@ def visualize_random_points_comparison(model, vae, test_loader):
     # Clip values to be at least 1e-10
     safe_det = np.clip(det_G, 1e-10, None)
     cp = plt.contourf(xx, yy, np.log10(safe_det), cmap='YlOrRd', alpha=0.3)
-    plt.colorbar(cp)
+    plt.colorbar(cp, label='Magnification Factor')
 
-    plt.title(f'Visualization of Test Trajectory with random start/end point')
+    plt.title(f'Visualization of Test Trajectory with random start/end point of the {space_name}')
+
     plt.xlabel('z1')
     plt.ylabel('z2')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.axis('equal')  # Keeps the scale 1:1 so circles look like circles
-    plt.show()
+    # Forces the x and y axes to have the exact same scale
+    #plt.gca().set_aspect('equal', adjustable='box')
+    #plt.tight_layout(pad=3)
+    #plt.show()
     print("Successful.")
+
+def save_test_plot(save_dir, filename):
+    """
+    Saves the currently active matplotlib figure to the specified directory.
+
+    save_dir: str, path to the directory where the plot should be saved.
+    filename: str, name of the file (e.g., 'path_comparison.svg')
+    """
+    if save_dir:
+        # 1. Ensure the folder exists
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, filename)
+
+        # 2. Save the plot
+        # bbox_inches='tight' acts exactly like your tight_layout(pad=2.0)
+        # to ensure titles and labels never get cut off!
+        plt.savefig(save_path, format='svg', bbox_inches='tight')
+        print(f"📸 Test plot saved as SVG to: {save_path}")
+
+    # 3. Close the figure silently in the background
+    # This is CRUCIAL so your automated testing overnight loop doesn't
+    # freeze waiting for you to manually close a pop-up window!
+    #plt.close()

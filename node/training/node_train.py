@@ -49,6 +49,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     METRIC_SCALE_ENERGY = node_cfg['training']['metric_scale_energy']
     SAFE_BASELINE = node_cfg['training']['safe_baseline']
     lr = node_cfg['training'].get('learning_rate', 1e-4)
+    lr_gamma = node_cfg['training'].get('lr_gamma', 1e-1)
     epochs = node_cfg['training'].get('epochs', 4000)
     # Extract scheduler variables
     sched_cfg = node_cfg['training'].get('scheduler', {})
@@ -73,9 +74,9 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     vae.to(device).eval()
     model.to(device)
 
-    # Dynamic milestone: Drop LR at 75% of total epochs
-    drop_epoch = int(epochs * 0.75)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[drop_epoch], gamma=0.1)
+    # Dynamic milestone: Drop LR at 35% of total epochs
+    drop_epoch = int(epochs * 0.35)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[drop_epoch], gamma=lr_gamma)
 
     start_time = time.time()
     print(f"\n{'=' * 140}")

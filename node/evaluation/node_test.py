@@ -2,31 +2,19 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import os
 from node.node_model import GoalConditionedNODE
-from node.utils.plots import visualize_metric, visualize_path_comparison, visualize_random_points_comparison
+from node.utils.plots import visualize_metric, visualize_path_comparison, visualize_random_points_comparison, \
+    save_test_plot
 
 
 ################################################### Testing My RiemMSE NODE Playground
-class LatentTrajectoryDataset(Dataset):
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
-        self.file_list = [f for f in os.listdir(data_dir) if f.endswith('.pt')]
-
-    def __len__(self):
-        return len(self.file_list)
-
-    def __getitem__(self, idx):
-        file_path = os.path.join(self.data_dir, self.file_list[idx])
-        data = torch.load(file_path, weights_only=True)
-
-        # p1: [2], p2: [2], z: [T, 2]
-        return data['p1'].float(), data['p2'].float(), data['z'].float()
-
 #Loading the trained RNODE
-def load_trained_node(model_path, latent_dim=2, device='cpu'):
+def load_trained_node(model_path, latent_dim=2, hidden_dim=256, device='cpu'):
     # 1. Recreate the architecture
-    model = GoalConditionedNODE(latent_dim=latent_dim)
+    model = GoalConditionedNODE(latent_dim=latent_dim, hidden_dim=hidden_dim)
 
     # 2. Load the state dictionary (the weights)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Could not find saved model at: {model_path}")
     # Use weights_only=True for security as we discussed
     state_dict = torch.load(model_path, map_location=device, weights_only=True)
 
@@ -40,7 +28,7 @@ def load_trained_node(model_path, latent_dim=2, device='cpu'):
     print(f"Successfully loaded model from {model_path}")
     return model
 
-def test_node(vae_model):
+def test_node_or(vae_model):
     print("Testing...")
     #Use your existing Dataset class pointed at the NEW folder
     test_data_final = LatentTrajectoryDataset(ROOT_DIR + "/test_datasets/14demos_random_50segpaths_50ts_tsd") #original_demos_50ts_tsd  random_50segpaths_50ts_tds 14demos_random_50segpaths_50ts_tsd
@@ -53,3 +41,32 @@ def test_node(vae_model):
     visualize_metric(vae_model)
     visualize_path_comparison(my_model, vae_model, test_loader_final, num_samples=5)
     visualize_random_points_comparison(my_model, vae_model, test_loader_final)
+
+
+def test_node(trained_model, vae_model, test_loader, save_dir, device='cpu', space_name='', latent_frame=10):
+    """
+    Takes the already-loaded models and data, and runs the visualizations.
+    """
+    print("\n--- Starting Testing & Visualizations ---")
+
+    # Ensure models are in eval mode and on the right device
+    trained_model.eval()
+    vae_model.eval()
+    vae_model = vae_model.to(device)
+
+    # Run your plotting functions
+    print("Generating Manifold Visualization...")
+    visualize_metric(vae_model, space_name, latent_frame)
+    save_test_plot(save_dir=save_dir, filename=f"{space_name} Manifold.svg")
+
+    print("Generating Path Comparisons...")
+    number_samples = 5
+    visualize_path_comparison(trained_model, vae_model, test_loader, space_name, latent_frame, num_samples=number_samples)
+    save_test_plot(save_dir=save_dir, filename=f"{number_samples}-Path Comparisons.svg")
+
+    print("Generating Random Points Comparison...")
+    visualize_random_points_comparison(trained_model, vae_model, test_loader, space_name, latent_frame)
+    save_test_plot(save_dir=save_dir, filename=f"Trajectory with random start-end point.svg")
+
+
+    print("✅ Testing complete!")
