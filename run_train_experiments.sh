@@ -33,6 +33,6 @@ TOY_SHAPES=("None")
 # Execute the runs
 # ---------------------------------------------------------
 run_dataset "lasa" "${LASA_SHAPES[@]}"
-run_dataset "toy" "${TOY_SHAPES[@]}"
+#run_dataset "toy" "${TOY_SHAPES[@]}"
 
 echo "🎉 ALL OVERNIGHT TRAINING RUNS COMPLETED!"

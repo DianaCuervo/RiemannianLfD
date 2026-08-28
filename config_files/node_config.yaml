@@ -30,12 +30,11 @@ toy:
     model_name: 'NODE_{shape}RiemannianMSE_EGI'
     model_train_curves_dir: './node/training/training_curves'
     model_train_logs_dir: './node/training/training_logs'
-
   # Training Hyperparameters (for the train loop!)
   training:
     learning_rate: 0.001
     batch_size: 32
-    epochs: 10 #4000
+    epochs: 4000
     metric_scale_energy: 1e-8
     safe_baseline: 3867617.82
     scheduler:
@@ -82,7 +81,7 @@ lasa:
     training:
       learning_rate: 0.001
       batch_size: 32
-      epochs: 10
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       scheduler:
@@ -106,7 +105,7 @@ lasa:
     training:
       learning_rate: 0.001
       batch_size: 32
-      epochs: 10
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       scheduler:
@@ -130,7 +129,7 @@ lasa:
     training:
       learning_rate: 0.001
       batch_size: 32
-      epochs: 10
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       scheduler:
@@ -154,7 +153,7 @@ lasa:
     training:
       learning_rate: 0.001
       batch_size: 32
-      epochs: 10
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       scheduler:
