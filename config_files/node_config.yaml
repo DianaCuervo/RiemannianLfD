@@ -40,8 +40,8 @@ toy:
     epochs: 4000
     metric_scale_energy: 1e-8     # Energy loss scaling factor
     safe_baseline: 3867617.82     # Average Energy from demonstrations
-    metric_clamp_max: 1e6  # Centralized metric ceiling
-    metric_clamp_min: 1e-3  # Centralized metric ceiling
+    metric_clamp_max: 1e6         # Centralized metric ceiling
+    metric_clamp_min: 1e-3        # Centralized metric ceiling
     grad_clip_norm: 0.5           # Gradient clipping threshold
     scheduler:
       base_scale: 0.0001   # 1e-4

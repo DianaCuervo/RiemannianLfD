@@ -53,8 +53,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     drop_fraction = node_cfg['training'].get('lr_drop_fraction', 0.35)
     epochs = node_cfg['training'].get('epochs', 4000)
     # Extract countermeasures parameters against exploding energy
-    clamp_min = node_cfg["training"]["metric_clamp_min"]
-    clamp_max = node_cfg["training"]["metric_clamp_max"]
+    clamp_min = float(node_cfg["training"]["metric_clamp_min"])
+    clamp_max = float(node_cfg["training"]["metric_clamp_max"])
     clip_norm = node_cfg["training"]["grad_clip_norm"]
     # Extract scheduler variables
     sched_cfg = node_cfg['training'].get('scheduler', {})
@@ -204,7 +204,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     if not isinstance(G_raw_val_pred, torch.Tensor):
                         G_raw_val_pred = torch.tensor(G_raw_val_pred, dtype=torch.float32)
                     G_val_pred = torch.clamp(G_raw_val_pred.clone().detach(), min=clamp_min, max=clamp_max).to(
-                        device).reshape(B_val, T_val, D_val, D_val)
+                        device).reshape(T_val, B_val, D_val, D_val)
 
                     val_ener += (torch.einsum('tb i, tb ij, tb j -> tb', v_pred, G_val_pred,
                                               v_pred).mean().item()) * METRIC_SCALE_ENERGY
