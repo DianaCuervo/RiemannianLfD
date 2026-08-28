@@ -30,13 +30,19 @@ toy:
     model_name: 'NODE_{shape}RiemannianMSE_EGI'
     model_train_curves_dir: './node/training/training_curves'
     model_train_logs_dir: './node/training/training_logs'
+    model_test_results_dir: './node/evaluation/results/'
   # Training Hyperparameters (for the train loop!)
   training:
-    learning_rate: 0.001
+    learning_rate: 0.0001
+    lr_gamma: 0.1
+    lr_drop_fraction: 0.375
     batch_size: 32
     epochs: 4000
-    metric_scale_energy: 1e-8
-    safe_baseline: 3867617.82
+    metric_scale_energy: 1e-8     # Energy loss scaling factor
+    safe_baseline: 3867617.82     # Average Energy from demonstrations
+    metric_clamp_max: 1e6  # Centralized metric ceiling
+    metric_clamp_min: 1e-3  # Centralized metric ceiling
+    grad_clip_norm: 0.5           # Gradient clipping threshold
     scheduler:
       base_scale: 0.0001   # 1e-4
       ramp_start: 500      # Epoch when goal/energy pressure begins
@@ -66,6 +72,7 @@ lasa:
     model_name: 'NODE_{shape}RiemannianMSE_EGI'
     model_train_curves_dir: './node/training/training_curves'
     model_train_logs_dir: './node/training/training_logs'
+    model_test_results_dir: './node/evaluation/results/'
 
   # --- SHAPE SPECIFIC HYPERPARAMETERS ---
   N:
