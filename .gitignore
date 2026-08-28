@@ -21,6 +21,10 @@ node/training/training_curves/*.png
 #*.pt
 *.pth
 *.pkl
+
+# ...but always keep the trained weights we ship with the repo
+!models/**/*.pt
+!models/**/*.pth
 #dataset_baselines.json
 
 # 5. IDEs and OS Files
