@@ -63,6 +63,9 @@ def test_node(trained_model, vae_model, test_loader, save_dir, device='cpu', spa
     number_samples = 5
     visualize_path_comparison(trained_model, vae_model, test_loader, space_name, latent_frame, num_samples=number_samples)
     save_test_plot(save_dir=save_dir, filename=f"{number_samples}-Path Comparisons.svg")
+    number_samples = 30
+    visualize_path_comparison(trained_model, vae_model, test_loader, space_name, latent_frame, num_samples=number_samples)
+    save_test_plot(save_dir=save_dir, filename=f"{number_samples}-Path Comparisons.svg")
 
     print("Generating Random Points Comparison...")
     visualize_random_points_comparison(trained_model, vae_model, test_loader, space_name, latent_frame)

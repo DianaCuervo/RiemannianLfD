@@ -35,7 +35,7 @@ toy:
   training:
     learning_rate: 0.0001
     lr_gamma: 0.1
-    lr_drop_fraction: 0.375
+    lr_drop_fraction: 0.4
     batch_size: 32
     epochs: 4000
     metric_scale_energy: 1e-8     # Energy loss scaling factor
@@ -49,7 +49,7 @@ toy:
       ramp_length: 2500    # How many epochs it takes to reach max weights
       w_imit_target: 1.0   # Constant multiplier for imitation
       w_goal_start: 1.0    # What goal weight starts at when ramp begins
-      w_goal_target: 50.0  # What goal weight ramps up to
+      w_goal_target: 100.0  # What goal weight ramps up to
       w_ener_target: 1.0   # What energy weight ramps up to
 
 lasa:
@@ -79,26 +79,31 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+      hidden_dim: 512 # NShape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.001
+      learning_rate: 0.0001
+      lr_gamma: 0.1
+      lr_drop_fraction: 0.30
       batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
+      metric_clamp_max: 1e6         # Centralized metric ceiling
+      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 0.0001   # The shrink ray
-        ramp_start: 500
-        ramp_length: 2500
+        ramp_start: 300      # Epoch when goal/energy pressure begins
+        ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 50.0  # What goal weight ramps up to
-        w_ener_target: 1.0   # What energy weight ramps up to
+        w_goal_target: 150.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
   Angle:
     # Model Architecture Parameters
     architecture:
@@ -110,64 +115,79 @@ lasa:
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.001
+      learning_rate: 0.0001
+      lr_gamma: 0.1
+      lr_drop_fraction: 0.4
       batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
+      metric_clamp_max: 1e6         # Centralized metric ceiling
+      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 0.0001   # 1e-4
-        ramp_start: 500      # Epoch when goal/energy pressure begins
-        ramp_length: 2500    # How many epochs it takes to reach max weights
+        ramp_start: 300      # Epoch when goal/energy pressure begins
+        ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 50.0  # What goal weight ramps up to
-        w_ener_target: 1.0   # What energy weight ramps up to
+        w_goal_target: 100.0  # What goal weight ramps up to
+        w_ener_target: 0.1   # What energy weight ramps up to
   P:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+      hidden_dim: 512 # PShape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.001
+      learning_rate: 0.0001
+      lr_gamma: 0.1
+      lr_drop_fraction: 0.4
       batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
+      metric_clamp_max: 1e6         # Centralized metric ceiling
+      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 0.0001   # The shrink ray
-        ramp_start: 500
-        ramp_length: 2500
+        ramp_start: 300      # Epoch when goal/energy pressure begins
+        ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 50.0  # What goal weight ramps up to
-        w_ener_target: 1.0   # What energy weight ramps up to
+        w_goal_target: 150.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
   Leaf_1:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 256 # Maybe NShape needs a wider network as 512
+      hidden_dim: 512 # Leaf_1Shape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.001
+      learning_rate: 0.0001
+      lr_gamma: 0.1
+      lr_drop_fraction: 0.4
       batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
+      metric_clamp_max: 1e6         # Centralized metric ceiling
+      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 0.0001   # The shrink ray
-        ramp_start: 500
-        ramp_length: 2500
+        ramp_start: 300      # Epoch when goal/energy pressure begins
+        ramp_length: 1700    # How many epochs it takes to reach max weights
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 50.0  # What goal weight ramps up to
-        w_ener_target: 1.0   # What energy weight ramps up to
+        w_goal_target: 150.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
