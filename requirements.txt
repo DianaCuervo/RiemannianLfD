@@ -24,6 +24,11 @@ pyquaternion==0.9.9
 PyYAML>=6.0
 networkx>=3.0
 
+# --- Hyperparameter Tuning ---
+optuna
+SQLAlchemy
+optuna-dashboard
+
 # --- Local Sub-packages ---
 -e ./s-vae-pytorch
 -e ./stochman
