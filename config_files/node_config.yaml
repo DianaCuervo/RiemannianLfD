@@ -37,7 +37,7 @@ toy:
     lr_gamma: 0.1
     lr_drop_fraction: 0.4
     batch_size: 32
-    epochs: 500
+    epochs: 1000
     metric_scale_energy: 1e-8     # Energy loss scaling factor
     safe_baseline: 3867617.82     # Average Energy from demonstrations
     metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -90,7 +90,7 @@ lasa:
       lr_gamma: 0.1
       lr_drop_fraction: 0.30
       batch_size: 32
-      epochs: 3000
+      epochs: 1000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling

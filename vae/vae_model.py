@@ -284,13 +284,14 @@ def load_pretrained_vae(config, dummy_tensor, device='cpu'):
     batch_size = config['training_artifacts']['batch_size']
     pos_dof = config['architecture']['pos_dof']
     qua_dof = config['architecture']['qua_dof']
+    sigma = float(config['architecture']['sigma'])
     sigma_z = config['architecture']['sigma_z']
     beta_scale = config['architecture'].get('beta_scale', 1.0)
     model_path = config['training_artifacts']['model_path']
     cluster_path = config['training_artifacts']['cluster_path']
 
     # 2. Initialize the empty architecture
-    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof, sigma_z=sigma_z).to(device)
+    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof, sigma=sigma, sigma_z=sigma_z).to(device)
     vae.obstacle_input_space = None
 
     # 3. Initialize clusters (Using random noise just to build the graph dimensions!)

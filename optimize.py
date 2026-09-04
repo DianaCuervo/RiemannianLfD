@@ -155,14 +155,22 @@ if __name__ == "__main__":
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=50)
     )
 
+
     print(f"Resuming optimization. Currently completed {len(study.trials)} trials.")
 
     # Start the timer
     start_time = time.time()
 
     # 4. Run Optimization
-    # Notice we pass the initialized VAE and device into the objective!
-    study.optimize(lambda trial: objective(trial, base_node_cfg, vae, device), n_trials=args.n_trials)
+    # Original Optuna optimization line
+    #study.optimize(lambda trial: objective(trial, base_node_cfg, vae, device), n_trials=args.n_trials)
+
+    # Study will catch the ValueError and mark trial as failure:
+    study.optimize(
+        lambda trial: objective(trial, base_node_cfg, vae, device),
+        n_trials=args.n_trials,
+        catch=(ValueError, RuntimeError)  # <--- THIS is the magic line
+    )
 
     # Stop the timer and calculate duration
     end_time = time.time()
