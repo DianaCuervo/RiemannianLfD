@@ -1,0 +1,53 @@
+# ==========================================
+# BENCHMARK CONFIGURATION
+# ==========================================
+
+# Base directory where all benchmark outputs (plots, metrics) will be saved
+results_base_dir: './benchmarks/results'
+
+datasets:
+  toy:
+    type: 'toy'
+    shape_name: 'None'
+    origin_dir: './datasets/toy_example'
+    trajectory_number: 7
+    test_id: 0
+    r2_letter: "J"
+    s2_letter: "C"
+    # Preprocessing params for benchmark generation
+    interpolation_points: 500
+    min_window: 20
+    max_window: 480
+    samples_per_path: 50
+    time_steps: 100
+    # Benchmark-specific save paths
+    benchmark_dir: './benchmark/data/toy'
+    gt_data: './benchmark/data/toy/ground_truth.pt'
+
+  lasa:
+    type: 'lasa'
+    shape_name: '{shape}'
+    origin_dir: './datasets/lasa'
+    origin_file: '{shape}_UQ.mat'
+    trajectory_number: 7
+    # Preprocessing params for benchmark generation
+    interpolation_points: 500
+    min_window: 50
+    max_window: 480
+    samples_per_path: 50
+    time_steps: 100
+    # Benchmark-specific save paths (dynamically replaces {shape})
+    benchmark_dir: './benchmark/data/lasa_{shape}'
+    gt_data: './benchmark/data/lasa_{shape}/ground_truth.pt'
+
+frameworks:
+  discrete:
+    graph_size: 100
+    results_file: "discrete_latent_paths.pt"
+
+  iterative:
+    results_file: "iterative_latent_paths.pt"
+
+  node:
+    # Use placeholders here too, so the benchmark knows exactly which model to load!
+    model_path: "./models/node/{dataset}/NODE_{dataset}_{shape}_RiemannianMSE_EGI.pth"
