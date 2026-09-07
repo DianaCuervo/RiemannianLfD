@@ -4,7 +4,7 @@ toy:
   # Model Architecture Parameters
   architecture:
     latent_dim: 2
-    hidden_dim: 256
+    hidden_dim: 128
   # Integration Parameters (for the RK4 solver)
   integration:
     method: 'rk4'
@@ -33,11 +33,11 @@ toy:
     model_test_results_dir: './node/evaluation/results/'
   # Training Hyperparameters (for the train loop!)
   training:
-    learning_rate: 0.0001
+    learning_rate: 2.5e-3
     lr_gamma: 0.1
     lr_drop_fraction: 0.4
-    batch_size: 32
-    epochs: 1000
+    batch_size: 64
+    epochs: 4000
     metric_scale_energy: 1e-8     # Energy loss scaling factor
     safe_baseline: 3867617.82     # Average Energy from demonstrations
     metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -49,8 +49,8 @@ toy:
       ramp_length: 2500    # How many epochs it takes to reach max weights
       w_imit_target: 1.0   # Constant multiplier for imitation
       w_goal_start: 1.0    # What goal weight starts at when ramp begins
-      w_goal_target: 100.0  # What goal weight ramps up to
-      w_ener_target: 1.0   # What energy weight ramps up to
+      w_goal_target: 24.37  # What goal weight ramps up to
+      w_ener_target: 0.37   # What energy weight ramps up to
 
 lasa:
   # --- COMMON DATASET SETTINGS ---
@@ -73,24 +73,23 @@ lasa:
     model_train_curves_dir: './node/training/training_curves'
     model_train_logs_dir: './node/training/training_logs'
     model_test_results_dir: './node/evaluation/results/'
-
   # --- SHAPE SPECIFIC HYPERPARAMETERS ---
   N:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 512 # NShape needs a wider network as 512
+      hidden_dim: 256 # NShape wide network
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.0001
+      learning_rate: 6.67e-4
       lr_gamma: 0.1
       lr_drop_fraction: 0.30
       batch_size: 32
-      epochs: 1000
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -102,8 +101,8 @@ lasa:
         ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 150.0  # What goal weight ramps up to
-        w_ener_target: 0.05   # What energy weight ramps up to
+        w_goal_target: 14.84  # What goal weight ramps up to
+        w_ener_target: 3.64   # What energy weight ramps up to
   Angle:
     # Model Architecture Parameters
     architecture:
@@ -137,18 +136,18 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 512 # PShape needs a wider network as 512
+      hidden_dim: 128 # PShape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 0.0001
+      learning_rate: 2.1e-3
       lr_gamma: 0.1
       lr_drop_fraction: 0.4
-      batch_size: 32
-      epochs: 1000
+      batch_size: 64
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -160,8 +159,8 @@ lasa:
         ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 150.0  # What goal weight ramps up to
-        w_ener_target: 0.05   # What energy weight ramps up to
+        w_goal_target: 34.82  # What goal weight ramps up to
+        w_ener_target: 3.58   # What energy weight ramps up to
   Leaf_1:
     # Model Architecture Parameters
     architecture:
