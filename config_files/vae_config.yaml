@@ -19,8 +19,8 @@ lasa:
     layers: [7, 200, 100, 2]  # [7, 200, 100, 2] for the lasa VAE
     pos_dof: 3                # 3 for the lasa VAE
     qua_dof: 4                # 4 for the lasa VAE
-    sigma: 7e-8               # VAE's encoder scale
-    sigma_z: 1.0
+    sigma: 7e-8               # VAE's decoder scale for position data
+    sigma_z: 1.0              # VAE's encoder scale
     beta_scale: 1
   training_artifacts:
     batch_size: 128
