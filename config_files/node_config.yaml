@@ -4,7 +4,7 @@ toy:
   # Model Architecture Parameters
   architecture:
     latent_dim: 2
-    hidden_dim: 128
+    hidden_dim: 256
   # Integration Parameters (for the RK4 solver)
   integration:
     method: 'rk4'
@@ -33,10 +33,10 @@ toy:
     model_test_results_dir: './node/evaluation/results/'
   # Training Hyperparameters (for the train loop!)
   training:
-    learning_rate: 2.5e-3
+    learning_rate: 1.0e-4 #2.5e-3--> Optuna
     lr_gamma: 0.1
-    lr_drop_fraction: 0.4
-    batch_size: 64
+    lr_drop_fraction: 0.75
+    batch_size: 32
     epochs: 4000
     metric_scale_energy: 1e-8     # Energy loss scaling factor
     safe_baseline: 3867617.82     # Average Energy from demonstrations
@@ -49,8 +49,8 @@ toy:
       ramp_length: 2500    # How many epochs it takes to reach max weights
       w_imit_target: 1.0   # Constant multiplier for imitation
       w_goal_start: 1.0    # What goal weight starts at when ramp begins
-      w_goal_target: 24.37  # What goal weight ramps up to
-      w_ener_target: 0.37   # What energy weight ramps up to
+      w_goal_target: 50.0  # What goal weight ramps up to
+      w_ener_target: 1.0   # What energy weight ramps up to
 
 lasa:
   # --- COMMON DATASET SETTINGS ---
