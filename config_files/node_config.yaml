@@ -62,8 +62,8 @@ lasa:
     origin_file: '{shape}_UQ.mat'
     trajectory_number: 7  # the number of total demonstration files
     save_dir: './node/data/{shape}_processed'
-    min_window: 20
-    max_window: 980
+    min_window: 150
+    max_window: 950
     samples_per_path: 50
     time_steps: 50
     train_rat: 0.7715
@@ -78,14 +78,14 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 256 # NShape wide network
+      hidden_dim: 512 # NShape wide network
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
-      step_size: 0.05
+      step_size: 0.025
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 6.67e-4
+      learning_rate: 1.0e-4 #6.67e-4-->Optuna
       lr_gamma: 0.1
       lr_drop_fraction: 0.30
       batch_size: 32
@@ -101,8 +101,8 @@ lasa:
         ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 14.84  # What goal weight ramps up to
-        w_ener_target: 3.64   # What energy weight ramps up to
+        w_goal_target: 75.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
   Angle:
     # Model Architecture Parameters
     architecture:
@@ -175,7 +175,7 @@ lasa:
       learning_rate: 2.36e-3
       lr_gamma: 0.1
       lr_drop_fraction: 0.4
-      batch_size: 16
+      batch_size: 32 #16 totrain 32 totest
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
