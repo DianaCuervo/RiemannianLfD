@@ -136,17 +136,17 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 128 # PShape needs a wider network as 512
+      hidden_dim: 512 # PShape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
-      step_size: 0.05
+      step_size: 0.025
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 2.1e-3
+      learning_rate: 1.0e-4 #2.1e-3--> Optuna value
       lr_gamma: 0.1
       lr_drop_fraction: 0.4
-      batch_size: 64
+      batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
@@ -159,8 +159,8 @@ lasa:
         ramp_length: 1700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 34.82  # What goal weight ramps up to
-        w_ener_target: 3.58   # What energy weight ramps up to
+        w_goal_target: 150.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
   Leaf_1:
     # Model Architecture Parameters
     architecture:
