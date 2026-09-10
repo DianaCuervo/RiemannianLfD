@@ -165,3 +165,91 @@ lasa:
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
         w_goal_target: 50.0  # What goal weight ramps up to
         w_ener_target: 1.0   # What energy weight ramps up to
+
+lerobot:
+  # --- SHAPE (dataset variant) SPECIFIC HYPERPARAMETERS ---
+  # Selected via --shape pick / --shape place, mirroring lasa's N/Angle/P/Leaf_1 pattern.
+  pick:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Data Load and Preparation
+    dataset:
+      type: 'lerobot'          # 'lasa', 'toy', or 'lerobot'
+      shape_name: 'hf_pick'    # Used for naming the save_dir / model
+      repo_id: 'firefly1709/mahathi_shelf_pick'  # HuggingFace LeRobotDataset repo id
+      euler_order: 'xyz'       # VERIFY against data-collection convention
+      n_points: 1000           # per-episode resample length
+      save_dir: './node/data/lerobot_hf_pick_processed'
+      min_window: 20
+      max_window: 980
+      samples_per_path: 50
+      time_steps: 50
+      train_rat: 0.7715
+      val_rat: 0.087
+      model_dir: './models/node/lerobot'
+      model_name: 'NODE_{shape}RiemannianMSE_EGI'
+      model_train_curves_dir: './node/training/training_curves'
+      model_train_logs_dir: './node/training/training_logs'
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001
+        ramp_start: 500
+        ramp_length: 2500
+        w_imit_target: 1.0
+        w_goal_start: 1.0
+        w_goal_target: 50.0
+        w_ener_target: 1.0
+  place:
+    # Model Architecture Parameters
+    architecture:
+      latent_dim: 2
+      hidden_dim: 256
+    # Integration Parameters (for the RK4 solver)
+    integration:
+      method: 'rk4'
+      step_size: 0.05
+    # Data Load and Preparation
+    dataset:
+      type: 'lerobot'          # 'lasa', 'toy', or 'lerobot'
+      shape_name: 'hf_place'   # Used for naming the save_dir / model
+      repo_id: 'firefly1709/mahathi_shelf_place'  # HuggingFace LeRobotDataset repo id
+      euler_order: 'xyz'       # VERIFY against data-collection convention
+      n_points: 1000           # per-episode resample length
+      save_dir: './node/data/lerobot_hf_place_processed'
+      min_window: 20
+      max_window: 980
+      samples_per_path: 50
+      time_steps: 50
+      train_rat: 0.7715
+      val_rat: 0.087
+      model_dir: './models/node/lerobot'
+      model_name: 'NODE_{shape}RiemannianMSE_EGI'
+      model_train_curves_dir: './node/training/training_curves'
+      model_train_logs_dir: './node/training/training_logs'
+    # Training Hyperparameters (for the train loop!)
+    training:
+      learning_rate: 0.001
+      batch_size: 32
+      epochs: 10
+      metric_scale_energy: 'metric_scale_energy_dummy'
+      safe_baseline: 'safe_baseline_dummy'
+      scheduler:
+        base_scale: 0.0001
+        ramp_start: 500
+        ramp_length: 2500
+        w_imit_target: 1.0
+        w_goal_start: 1.0
+        w_goal_target: 50.0
+        w_ener_target: 1.0

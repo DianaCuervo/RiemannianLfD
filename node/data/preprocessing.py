@@ -287,6 +287,56 @@ def normalize_newVAE(raw_trajectories):
 
     return norm_trajectories
 
+## LEROBOT LOGIC
+#Get lerobot-demonstrations (HuggingFace LeRobotDataset)
+def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    from scipy.spatial.transform import Rotation, Slerp
+
+    ds = LeRobotDataset(repo_id)
+    table = ds.hf_dataset
+    cols = table.with_format("numpy")[:]
+    cart = cols["observation.state.cartesian"]   # (N, 6): x,y,z,roll,pitch,yaw
+    t_all = cols["timestamp"]
+    ep_all = cols["episode_index"]
+
+    ep_ids = sorted(np.unique(ep_all).tolist())
+
+    # --- STEP 1: Load and resample every episode to a fixed n_points ---
+    raw_trajectories = []
+    raw_quats = []
+    for e in ep_ids:
+        mask = ep_all == e
+        order = np.argsort(t_all[mask])
+        t = t_all[mask][order]
+        pos = cart[mask][order, :3]
+        euler = cart[mask][order, 3:6]
+        quat = Rotation.from_euler(euler_order, euler).as_quat()
+
+        # resample every episode to a fixed n_points (episode durations/frame
+        # counts differ even though dt within each episode is uniform)
+        t_uniform = np.linspace(t[0], t[-1], n_points)
+        pos_r = np.stack([np.interp(t_uniform, t, pos[:, k]) for k in range(3)], axis=1)
+        quat_r = Slerp(t, Rotation.from_quat(quat))(t_uniform).as_quat()
+
+        raw_trajectories.append(pos_r)
+        raw_quats.append(quat_r)
+
+    # --- STEP 2: Concatenate positions with Quaternions (-Q augmentation) ---
+    trajectories = []
+    for pos, quat in zip(raw_trajectories, raw_quats):
+        trajectory = pos
+        trajectory_n = copy.deepcopy(trajectory)
+        trajectory = np.append(trajectory, quat, 1)      # --> Small horsefeet
+        trajectory_n = np.append(trajectory_n, -quat, 1)  # --> Big horsefeet
+
+        trajectories.append(trajectory)
+        trajectories.append(trajectory_n)
+
+    print(f"Total # of Trajectories: {len(trajectories)}")
+
+    return trajectories
+
 ## ROBOT EXPERIMENT LOGIC
 #Get Robot-demonstrations
 def get_demonstrations_paths_robotexp(model_task="Angle"):
@@ -362,8 +412,29 @@ def build_dataset_offline(config, vae_model, device='cpu'):
         )
         final_paths = unify_time_steps(segmented_paths, time_steps=config['dataset']['time_steps'])
         create_dataset(final_paths, save_dir)
-    #elif dataset_type == 'robot':
-        ### To Be Added
+    elif dataset_type == 'lerobot':
+        real_paths = get_demonstrations_paths_lerobot(
+            repo_id=config['dataset']['repo_id'],
+            euler_order=config['dataset']['euler_order'],
+            n_points=config['dataset']['n_points'],
+        )
+        latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
+
+        # --- RUN THE BASELINE CALCULATOR ---
+        calc_baseline, calc_scale = calculate_dataset_baselines(vae_model, latent_paths, device=device)
+        metadata_path = os.path.join(save_dir, "dataset_baselines.json")
+        with open(metadata_path, 'w') as f:
+            json.dump({"safe_baseline": calc_baseline, "metric_scale_energy": calc_scale}, f, indent=4)
+        print(f"💾 Saved baselines permanently to: {metadata_path}")
+
+        segmented_paths = create_universal_segmented_dataset(
+            latent_paths,
+            min_window=config['dataset']['min_window'],
+            max_window=config['dataset']['max_window'],
+            samples_per_path=config['dataset']['samples_per_path']
+        )
+        final_paths = unify_time_steps(segmented_paths, time_steps=config['dataset']['time_steps'])
+        create_dataset(final_paths, save_dir)
 
     return save_dir
 

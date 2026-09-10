@@ -5,11 +5,17 @@ toy:
     pos_dof: 2                # 2 for the Toy VAE
     qua_dof: 3                # 3 for the Toy VAE
     sigma_z: 1.0
+    sigma: 1.0e-7
     beta_scale: 10
   training_artifacts:
     batch_size: 128
     model_path: './models/vae/toy_example/VAE_toy.pt'
     cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+  training:
+    epochs: 1000       # Stage 1 (KL) and Stage 2 (reconstruction) epochs
+    epochs_rbf: 1000    # Stage 3 (RBF variance networks) epochs
+    learning_rate: 0.001
+    n_samples: 1
   visualization:
     latent_frame: 10
 
@@ -19,6 +25,7 @@ lasa:
     pos_dof: 3                # 3 for the lasa VAE
     qua_dof: 4                # 4 for the lasa VAE
     sigma_z: 1.0
+    sigma: 7.0e-8
     beta_scale: 1
   training_artifacts:
     batch_size: 128
@@ -26,3 +33,45 @@ lasa:
     cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
   visualization:
     latent_frame: 15
+
+lerobot:
+  # --- SHAPE (dataset variant) SPECIFIC HYPERPARAMETERS ---
+  # Selected via --shape pick / --shape place, mirroring lasa's N/Angle/P/Leaf_1 pattern.
+  pick:
+    architecture:
+      layers: [7, 200, 100, 2]  # [7, 200, 100, 2] for the lerobot VAE
+      pos_dof: 3                # 3 for the lerobot VAE
+      qua_dof: 4                # 4 for the lerobot VAE
+      sigma_z: 1.0
+      sigma: 3.0e-8
+      beta_scale: 1
+    training_artifacts:
+      batch_size: 128
+      model_path: './models/vae/lerobot/VAE_pick.pt'
+      cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    training:
+      epochs: 1000       # Stage 1 (KL) and Stage 2 (reconstruction) epochs
+      epochs_rbf: 1000    # Stage 3 (RBF variance networks) epochs
+      learning_rate: 0.001
+      n_samples: 1
+    visualization:
+      latent_frame: 15
+  place:
+    architecture:
+      layers: [7, 200, 100, 2]  # [7, 200, 100, 2] for the lerobot VAE
+      pos_dof: 3                # 3 for the lerobot VAE
+      qua_dof: 4                # 4 for the lerobot VAE
+      sigma_z: 1.0
+      sigma: 2.0e-8
+      beta_scale: 1
+    training_artifacts:
+      batch_size: 128
+      model_path: './models/vae/lerobot/VAE_place.pt'
+      cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    training:
+      epochs: 1000       # Stage 1 (KL) and Stage 2 (reconstruction) epochs
+      epochs_rbf: 1000    # Stage 3 (RBF variance networks) epochs
+      learning_rate: 0.001
+      n_samples: 1
+    visualization:
+      latent_frame: 15

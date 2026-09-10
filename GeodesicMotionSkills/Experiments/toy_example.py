@@ -31,6 +31,7 @@ from GeodesicMotionSkills.Experiments.Utils.environment import Environment
 from stochman.manifold import EmbeddedManifold
 from stochman import nnj
 import copy
+import os
 
 
 class VAE(nn.Module, EmbeddedManifold):
@@ -549,7 +550,8 @@ def plot(model, measure, mf, geodesic):
 
 if __name__ == "__main__":
     # train = 0, visualization = 1
-    mode = 1
+    mode = int(os.environ.get("MANIFOLD_MODE", 1))
+    dataset_type = "toy_example"
 
     trajectory_number = 7  # the number of total demonstration files
     test_id = 0  # the index of the demonstration used for testing
@@ -560,12 +562,14 @@ if __name__ == "__main__":
     encoder_scales = [1.0]  # predefined variance of the encoder
     learning_rate = 1e-3  # learning rate
     graph_size = 100  # the number of graph nodes in each dimension
-    dof = 5  # number of dimensions (input output vector size)
-    pos_dof = 2  # number of dimensions in the position data
-    qua_dof = 3  # number of dimensions in the orientation data
-    latent_max = 10  # metric visualization max/min. should be equal to Latent_max in auxilary_tests_toy_example.py
+    # dof = 5  # number of dimensions (input output vector size)
+    pos_dof = int(os.environ.get("POS_DOF", 3))  # number of dimensions in the position data
+    qua_dof = int(os.environ.get("QUA_DOF", 4))  # number of dimensions in the orientation data
+    dof = pos_dof + qua_dof  # total number of dimensions (position + orientation)
+    latent_max = 15  # metric visualization max/min. should be equal to Latent_max in auxilary_tests_toy_example.py
     batch_size = 128  # training batch size
     trajectory_length = 135  # number of points in each trajectory
+    seed = 4 # random seed for reproducibility
 
     r2_letter = "J"
     s2_letter = "C"
@@ -576,6 +580,8 @@ if __name__ == "__main__":
     name = "_delete_no_obstacles"
     trajectory_flatten = None
     plot_num = "0"
+    plot_shape = r2_letter
+    output_path = f"../Plots/"
 
     for i in range(trajectory_number):
         r2_file_test = "../Dataset/letter_" + r2_letter + "_R2_" + str(test_id) + ".p"
@@ -583,7 +589,7 @@ if __name__ == "__main__":
         s2_file_test = "../Dataset/letter_" + s2_letter + "_S2_" + str(test_id) + ".p"
         s2_file = "../Dataset/letter_" + s2_letter + "_S2_" + str(i) + ".p"
 
-        test_traj = pickle.load(open(r2_file, "rb"), encoding="latin1").transpose()
+        test_traj = pickle.load(open(r2_file_test, "rb"), encoding="latin1").transpose()
         trajectory = pickle.load(open(r2_file, "rb"), encoding="latin1").transpose()
         test_trajectory_qua = -pickle.load(open(s2_file_test, "rb"), encoding="latin1")
         trajectory_qua = pickle.load(open(s2_file, "rb"), encoding="latin1")

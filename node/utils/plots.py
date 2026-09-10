@@ -1,8 +1,16 @@
 import torch
 import numpy as np
 import matplotlib
-matplotlib.use('Qt5Agg')  # Forces the visual popup
-import matplotlib.pyplot as plt
+try:
+    matplotlib.use('Qt5Agg', force=True)  # Forces the visual popup
+    import matplotlib.pyplot as plt
+except ImportError:
+    # No Qt binding / no display (e.g. headless CI, SSH) - fall back to non-interactive.
+    # matplotlib.use() alone doesn't eagerly import the backend module, so the failure
+    # only surfaces once pyplot (or switch_backend) is actually imported - hence the
+    # import lives inside this try block too.
+    matplotlib.use('Agg', force=True)
+    import matplotlib.pyplot as plt
 import os
 from vae.vae_model import get_M
 

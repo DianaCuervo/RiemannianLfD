@@ -6,6 +6,7 @@ import pickle
 from stochman import nnj
 import hyperspherical_vae.distributions.von_mises_fisher as vmf
 from sklearn.cluster import KMeans
+from tqdm import tqdm
 
 ###Create VAE Class --> To reconsider as it migth not be needed
 class VAE(nn.Module):
@@ -39,6 +40,13 @@ class VAE(nn.Module):
         self.batch_size = batch_size
         self.num_clusters = 500  # Number of clusters in the RBF k_mean
         self.vmf_concentration_scale = 1e2  # the scale of vmf distribution concentration
+        self.quaternion_log_scale = 1e10  # the scale of quaternion log-likelihood in the ELBO
+
+        # Training-only flags (mirrors GeodesicMotionSkills' toy_example.py VAE)
+        self.kl_coeff = 1.0  # Automatically Set
+        self.kl_coeff_max = 1.0
+        self.activate_KL = False  # if enabled, KL is considered in the ELBO calculation
+        self.empowered_quaternions = False  # when True, scales the quaternion log-likelihood in the Loss
 
         #  Initialize VAE
         enc = []
@@ -205,6 +213,18 @@ class VAE(nn.Module):
             return position_distribution, quaternion_distribution, quaternion_distribution_negative
         return position_distribution, quaternion_distribution
 
+    def to(self, device=None, *args, **kwargs):
+        """
+        Keep self.device (a plain attribute used by init_std/fit_std for placeholder
+        tensors and new submodules) in sync with wherever nn.Module.to() actually
+        moves the model's parameters - otherwise .to('cuda') silently leaves
+        self.device at its __init__ default of 'cpu', producing cross-device errors.
+        """
+        result = super().to(device, *args, **kwargs)
+        if device is not None:
+            self.device = device
+        return result
+
     def disable_training(self):
         """ Disabling the training for all the networks
         Inputs:
@@ -231,12 +251,12 @@ class VAE(nn.Module):
         d = z.shape[1]
         inv_max_std = np.sqrt(1e-12)  # 1.0 / x.std()
         beta = beta_scale / z.std(dim=0).mean()
-        rbf_beta = beta * torch.ones(1, self.num_clusters)
+        rbf_beta = beta * torch.ones(1, self.num_clusters, device=z.device)
 
         if load_clusters:
             k_means = pickle.load(open(cluster_path, "rb"))
         else:
-            k_means = KMeans(n_clusters=self.num_clusters).fit(z.numpy())
+            k_means = KMeans(n_clusters=self.num_clusters).fit(z.detach().cpu().numpy())
             pickle.dump(k_means, open(cluster_path, "wb"))
 
         centers = torch.tensor(k_means.cluster_centers_)
@@ -252,6 +272,27 @@ class VAE(nn.Module):
         self.dec_std_qua.to(self.device)
         cluster_centers = k_means.cluster_centers_
         return cluster_centers
+
+    def fit_std(self, data_loader, num_epochs, model, n_samples=1, learning_rate=1e-4):
+        """ Training the standard deviation models including 2 RBF networks for Cartesian and quaternion decoders
+        Inputs:
+            data_loader: the demonstration training dataset
+            num_epochs: number of epochs
+            model: an instance of VAE class
+        Outputs:
+
+        """
+        from vae.vae_train import loss_function_elbo  # deferred to avoid a circular import
+        params = list(self.encoder_scale.parameters()) + list(self.dec_std_qua.parameters()) + list(
+            self.dec_std_pos.parameters())
+        optimizer = torch.optim.Adam(params, lr=learning_rate)
+        for epoch in tqdm(range(num_epochs), desc="Stage 3/3: RBF variance networks"):
+            for batch_idx, (data,) in enumerate(data_loader):
+                data = data.to(self.device)
+                optimizer.zero_grad()
+                loss, loss_kl, loss_log = loss_function_elbo(data, model, train_rbf=True, n_samples=n_samples)
+                loss.backward()
+            optimizer.step()
 
 # Metric set of points *also paths
 def get_M(model, data):
@@ -284,13 +325,15 @@ def load_pretrained_vae(config, dummy_tensor, device='cpu'):
     batch_size = config['training_artifacts']['batch_size']
     pos_dof = config['architecture']['pos_dof']
     qua_dof = config['architecture']['qua_dof']
-    sigma_z = config['architecture']['sigma_z']
+    sigma_z = float(config['architecture']['sigma_z'])
+    sigma = float(config['architecture'].get('sigma', 1e-6))
     beta_scale = config['architecture'].get('beta_scale', 1.0)
     model_path = config['training_artifacts']['model_path']
     cluster_path = config['training_artifacts']['cluster_path']
 
     # 2. Initialize the empty architecture
-    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof, sigma_z=sigma_z).to(device)
+    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof,
+              sigma=sigma, sigma_z=sigma_z).to(device)
     vae.obstacle_input_space = None
 
     # 3. Initialize clusters (Using random noise just to build the graph dimensions!)
