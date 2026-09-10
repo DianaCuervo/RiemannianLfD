@@ -19,7 +19,7 @@ toy:
     r2_letter: "J"
     s2_letter: "C"
     interpolation_points: 500
-    min_window: 20
+    min_window: 80
     max_window: 480
     samples_per_path: 50
     time_steps: 50
@@ -165,17 +165,17 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 128     # Optimized
+      hidden_dim: 512     # Optimized
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
-      step_size: 0.05
+      step_size: 0.025
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 2.36e-3
+      learning_rate: 1.0e-4 #2.36e-3-->Optuna value
       lr_gamma: 0.1
       lr_drop_fraction: 0.4
-      batch_size: 32 #16 totrain 32 totest
+      batch_size: 32 #16 totrain by Optuna - 32 totest
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
@@ -188,5 +188,5 @@ lasa:
         ramp_length: 1700    # How many epochs it takes to reach max weights
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 97.35  # What goal weight ramps up to
-        w_ener_target: 9.42   # What energy weight ramps up to
+        w_goal_target: 150.0  # What goal weight ramps up to
+        w_ener_target: 0.05   # What energy weight ramps up to
