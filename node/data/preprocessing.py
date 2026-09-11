@@ -69,6 +69,9 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
 
         #segmented_data.append(path)
 
+        for _ in range(5):
+            segmented_data.append(path.clone())
+
         for _ in range(samples_per_path):
             ### Original segmentation code
             # # 1. Randomize the "Trip Duration" (Window Size) --> original line
@@ -102,7 +105,7 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
                 start = random.randint(0, num_steps - win_size)
                 end = start + win_size
 
-            # 3. MEDIUM (30% of samples)
+            # 3. MEDIUM (25% of samples)
             elif roll < 0.75:
                 win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
                 start = random.randint(0, num_steps - win_size)
