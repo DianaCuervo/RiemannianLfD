@@ -16,7 +16,7 @@ datasets:
     s2_letter: "C"
     # Preprocessing params for benchmark generation
     interpolation_points: 500
-    min_window: 20
+    min_window: 50
     max_window: 480
     samples_per_path: 50
     time_steps: 100
