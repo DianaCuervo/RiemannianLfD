@@ -61,6 +61,7 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
     # 1. Setup and Seed for consistency
     torch.manual_seed(42)
     np.random.seed(42)
+    random.seed(42)
     segmented_data = []
     for path in encoded_paths:
         num_steps = path.shape[0]
@@ -69,23 +70,49 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
         #segmented_data.append(path)
 
         for _ in range(samples_per_path):
-            # 1. Randomize the "Trip Duration" (Window Size) --> original line
-            #win_size = np.random.randint(min_window, max_window)
+            ### Original segmentation code
+            # # 1. Randomize the "Trip Duration" (Window Size) --> original line
+            # #win_size = np.random.randint(min_window, max_window)
+            #
+            # # 1. Choose a "Tier" based on 30/50/20 distribution
+            # roll = random.random()
+            # if roll < 0.35:  # SHORT (Precision)
+            #     win_size = random.randint(min_window, (num_steps//2)-100)
+            # elif roll < 0.70:  # MEDIUM (Flow)
+            #     win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+            # else:  # LONG (Global context)
+            #     win_size = random.randint(((num_steps//2)+100)+1, max_window)
+            #
+            # # 2. Pick a random start point
+            # if num_steps <= win_size:
+            #     continue
+            # start = np.random.randint(0, num_steps - win_size)
+            # end = start + win_size
 
-            # 1. Choose a "Tier" based on 30/50/20 distribution
             roll = random.random()
-            if roll < 0.35:  # SHORT (Precision)
-                win_size = random.randint(min_window, (num_steps//2)-100)
-            elif roll < 0.70:  # MEDIUM (Flow)
-                win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
-            else:  # LONG (Global context)
-                win_size = random.randint(((num_steps//2)+100)+1, max_window)
+            # 1. NEW: Goal Anchoring (20% of samples)
+            # Forces the network to learn how to reach the final end-point from the second half of the shape.
+            if roll < 0.20:
+                start = random.randint(num_steps // 2, num_steps - min_window)
+                end = num_steps
 
-            # 2. Pick a random start point
-            if num_steps <= win_size:
-                continue
-            start = np.random.randint(0, num_steps - win_size)
-            end = start + win_size
+            # 2. SHORT (25% of samples)
+            elif roll < 0.45:
+                win_size = random.randint(min_window, (num_steps//2)-100)
+                start = random.randint(0, num_steps - win_size)
+                end = start + win_size
+
+            # 3. MEDIUM (30% of samples)
+            elif roll < 0.75:
+                win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+                start = random.randint(0, num_steps - win_size)
+                end = start + win_size
+
+            # 4. LONG (25% of samples)
+            else:
+                win_size = random.randint(((num_steps//2)+100)+1, max_window)
+                start = random.randint(0, num_steps - win_size)
+                end = start + win_size
 
             # 3. Extract Segment
             z_segment = path[start:end, :].clone()
