@@ -69,9 +69,6 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
 
         #segmented_data.append(path)
 
-        for _ in range(5):
-            segmented_data.append(path.clone())
-
         for _ in range(samples_per_path):
             ### Original segmentation code
             # # 1. Randomize the "Trip Duration" (Window Size) --> original line
@@ -93,25 +90,27 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
             # end = start + win_size
 
             roll = random.random()
-            # 1. NEW: Goal Anchoring (20% of samples)
-            # Forces the network to learn how to reach the final end-point from the second half of the shape.
-            if roll < 0.20:
-                start = random.randint(num_steps // 2, num_steps - min_window)
-                end = num_steps
+            # 1. NEW: Long demos Anchoring (50% of samples)
+            # Forces the network to learn how to flow entirely through the N shape.
+            if roll < 0.50:
+                #start = random.randint(num_steps // 2, num_steps - min_window)
+                #end = num_steps
+                start = random.randint(0, min_window)
+                end = random.randint(num_steps - min_window, num_steps)
 
-            # 2. SHORT (25% of samples)
-            elif roll < 0.45:
+            # 2. SHORT (15% of samples)
+            elif roll < 0.65:
                 win_size = random.randint(min_window, (num_steps//2)-100)
                 start = random.randint(0, num_steps - win_size)
                 end = start + win_size
 
-            # 3. MEDIUM (25% of samples)
-            elif roll < 0.75:
+            # 3. MEDIUM (15% of samples)
+            elif roll < 0.80:
                 win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
                 start = random.randint(0, num_steps - win_size)
                 end = start + win_size
 
-            # 4. LONG (25% of samples)
+            # 4. LONG (20% of samples)
             else:
                 win_size = random.randint(((num_steps//2)+100)+1, max_window)
                 start = random.randint(0, num_steps - win_size)
