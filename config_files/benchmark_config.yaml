@@ -3,7 +3,8 @@
 # ==========================================
 
 # Base directory where all benchmark outputs (plots, metrics) will be saved
-results_base_dir: './benchmarks/results'
+results_base_dir: './benchmark/results'
+#results_predictions_dir: './benchmark/results/predictions'
 
 datasets:
   toy:
@@ -16,9 +17,9 @@ datasets:
     s2_letter: "C"
     # Preprocessing params for benchmark generation
     interpolation_points: 500
-    min_window: 50
+    min_window: 80
     max_window: 480
-    samples_per_path: 50
+    samples_per_path: 250
     time_steps: 100
     # Benchmark-specific save paths
     benchmark_dir: './benchmark/data/toy'
@@ -31,23 +32,45 @@ datasets:
     origin_file: '{shape}_UQ.mat'
     trajectory_number: 7
     # Preprocessing params for benchmark generation
-    interpolation_points: 500
-    min_window: 50
-    max_window: 480
-    samples_per_path: 50
+    min_window: 180
+    max_window: 980
+    samples_per_path: 250
     time_steps: 100
     # Benchmark-specific save paths (dynamically replaces {shape})
     benchmark_dir: './benchmark/data/lasa_{shape}'
     gt_data: './benchmark/data/lasa_{shape}/ground_truth.pt'
 
 frameworks:
-  discrete:
+  graph:
     graph_size: 100
-    results_file: "discrete_latent_paths.pt"
-
-  iterative:
+    toy:
+      latent_frame: 10
+    lasa:
+      latent_frame: 15
+  stochman:
     results_file: "iterative_latent_paths.pt"
-
   node:
     # Use placeholders here too, so the benchmark knows exactly which model to load!
-    model_path: "./models/node/{dataset}/NODE_{dataset}_{shape}_RiemannianMSE_EGI.pth"
+    #  model_path: "./models/node/{dataset}/NODE_{dataset}_{shape}_RiemannianMSE_EGI.pth"
+    #  results_file: "node_latent_paths.pt"
+    toy:
+      latent_dim: 2
+      hidden_dim: 256
+      model_dir: './models/node/toy_example'
+      model_name: 'NODE_{shape}RiemannianMSE_EGI'
+    lasa:
+      model_dir: './models/node/lasa'
+      model_name: 'NODE_{shape}RiemannianMSE_EGI'
+      N:
+        latent_dim: 2
+        hidden_dim: 512
+      Angle:
+        latent_dim: 2
+        hidden_dim: 256
+      P:
+        latent_dim: 2
+        hidden_dim: 512
+      Leaf_1:
+        latent_dim: 2
+        hidden_dim: 512
+

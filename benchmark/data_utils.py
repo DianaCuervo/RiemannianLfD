@@ -4,61 +4,7 @@ import torch
 from node.data.preprocessing import get_demonstrations_paths, interpolate_trajectories, encode_demonstrations_paths, \
     create_universal_segmented_dataset, unify_time_steps, get_demonstrations_paths_newVAE
 
-
-# Data preparation for experiments
-def get_ground_experiment_data(vae_model, ):
-    print("Testing real demos...")
-    real_space_paths = get_demonstrations_paths(vae_model)
-    # print("# of Paths: " + str(len(real_space_paths)))
-    # print("Paths shape: " + str(real_space_paths[0].shape))
-    # print("Points values: " + str(real_space_paths[0][0]))
-    # print("Points values: " + str(real_space_paths[0][-1]))
-    #
-    # print("Testing interpolation...")
-    # print("Real paths shape: " + str(real_space_paths[0].shape))
-    interpolated_paths = interpolate_trajectories(real_space_paths, 500)
-    # print("# of paths: " + str(len(interpolated_paths)))
-    # print("Interpolated Paths shape: " + str(interpolated_paths[0].shape))
-    #
-    # print("Testing latent demos...")
-    # print("Interpolated Paths shape: " + str(interpolated_paths[0].shape))
-    latent_space_paths = encode_demonstrations_paths(vae_model, interpolated_paths)
-    # print("# of paths: " + str(len(latent_space_paths)))
-    # print("Latent Paths shape: " + str(latent_space_paths[0].shape))
-
-    # print("Encoding")
-    # print("Testing latent demos unified time steps...")
-    # latent_space_paths1 = encode_demonstrations_paths(vae_model, torch.tensor(real_space_paths))
-    # latent_space_paths2 = encode_demonstrations_paths(vae_model, interpolated_paths)
-    # print("# of paths: " + str(len(latent_space_paths1)))
-    # print("Latent Paths shape: " + str(latent_space_paths1[0].shape))
-    # print("# of paths: " + str(len(latent_space_paths2)))
-    # print("Latent Paths shape: " + str(latent_space_paths2[0].shape))
-
-    print("Segmentation")
-    segmented_paths = create_universal_segmented_dataset(latent_space_paths, min_window=50, max_window=480, samples_per_path=50)
-    #plot_trajectories(segmented_paths)
-    print("# of paths: " + str(len(segmented_paths)))
-    print("Latent Paths shape: " + str(segmented_paths[0].shape))
-    #create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=150, samples_per_path=499)
-
-    print("DownSampling")
-    unified = unify_time_steps(segmented_paths, time_steps=100)
-    print("# of paths: " + str(len(unified)))
-    print("Latent Paths shape: " + str(unified[0].shape))
-
-    ground = unified
-    new_ground = torch.stack(ground)  # Shape: [500, Variable, 2]
-    #new_ground = torch.stack(latent_space_paths)
-    test = latent_space_paths
-
-    # plot_trajectories(real_space_paths)
-    # plot_trajectories(interpolated_paths)
-    # plot_trajectories(latent_space_paths)
-    # plot_trajectories(test)
-    return new_ground, test
-
-
+# Generate the benchmark datasets by dataset
 def generate_benchmark_dataset(dataset_cfg, shape_name, vae_model, device):
     """
     Acts just like build_dataset_offline, but formats and saves the output
@@ -102,7 +48,7 @@ def generate_benchmark_dataset(dataset_cfg, shape_name, vae_model, device):
 
     return new_ground
 
-# Export of the experiment predictions
+# Export the benchmark datasets
 def save_test_config(z1, z2, ground_truth, filename="ground_truth.pt", directory="./benchmark/data"):
     """
     Saves the essential test coordinates to disk.
@@ -128,8 +74,8 @@ def save_test_config(z1, z2, ground_truth, filename="ground_truth.pt", directory
     torch.save(data_to_save, full_path)
     print(f"✅ Benchmark data successfully archived at: {full_path}")
 
-
-def load_test_config(filename="experiment_data.pt", directory="../../RNODE/test_datasets/Experiment6"):
+# Load and preparation the benchmark data
+def load_test_config(filename="ground_truth.pt", directory="/benchmark/data"):
     """
     Loads the saved test coordinates and moves them to the specified device.
     """
@@ -139,7 +85,7 @@ def load_test_config(filename="experiment_data.pt", directory="../../RNODE/test_
         raise FileNotFoundError(f"❌ No file found at {full_path}")
 
     # 1. Load the dictionary
-    data = torch.load(full_path)
+    data = torch.load(full_path, weights_only=True)
 
     # 2. Extract and move to device (GPU/CPU)
     z1 = data['z1']
@@ -150,3 +96,115 @@ def load_test_config(filename="experiment_data.pt", directory="../../RNODE/test_
     print(f"📊 Benchmark Ground Truth Shape: {ground_truth.shape}")
 
     return z1, z2, ground_truth
+
+# Function to save graph paths as .txt files or .csv files
+def save_latent_paths_node(proxy_geodesics, dir_name="./benchmark/results", file_name="node_latent_paths_BM.pt"):
+    """
+    Consolidates 3,500 paths into a single structured file for efficiency.
+
+    Args:
+        proxy_geodesics: List of tensors or arrays.
+        dir_name: Directory to store the bundle.
+        file_name: The name of the aggregate file.
+    """
+    # 1. Ensure directory exists
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    processed_bundle = []
+
+    for traj in proxy_geodesics:
+        # Convert to torch tensor if it's numpy
+        t = torch.as_tensor(traj)
+
+        # 2. Reshape logic to ensure (1, 100, 2)
+        # If input is [100, 2], it becomes [1, 100, 2]
+        if t.dim() == 2:
+            t = t.unsqueeze(0)
+        # If it's already [1, 100, 2], this ensures it's correct
+        elif t.dim() == 3 and t.shape[0] != 1:
+            # Handle cases where batch might be squeezed
+            t = t[0:1, :, :]
+
+        processed_bundle.append(t.detach().cpu())
+
+    # 3. Stack into a single giant tensor [3500, 100, 2]
+    # OR keep as a list of [1, 100, 2] tensors.
+    # Stacking is usually better for Batch processing later.
+    final_data = torch.cat(processed_bundle, dim=0) # Result: [3500, 100, 2]
+
+    # 4. Save to disk
+    save_path = os.path.join(dir_name, file_name)
+    torch.save(final_data, save_path)
+
+    print(f"✅ NODE Proxy-Geodesics Exported! with Shape: {final_data.shape}")
+    print(f"Successfully exported: {save_path}")
+
+# Function to save stochman paths as .txt files or .csv files
+def save_latent_paths_stochman(trajectories, dir_name="./benchmark/results", file_name="stochman_latent_paths_BM.pt"):
+
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    processed_bundle = []
+    t_eval = torch.linspace(0, 1, 100)  # Standard 100 steps
+
+    for traj in trajectories:
+        # CHECK: If it's a spline object, evaluate it first
+        if hasattr(traj, 'begin') or "CubicSpline" in str(type(traj)):
+            t = traj(t_eval.to(traj.params.device))
+        else:
+            t = torch.as_tensor(traj)
+
+        # Ensure (1, 100, 2) shape
+        if t.dim() == 2:
+            t = t.unsqueeze(0)
+
+        processed_bundle.append(t.detach().cpu())
+
+    final_data = torch.cat(processed_bundle, dim=0)
+    torch.save(final_data, os.path.join(dir_name, file_name))
+    print(f"✅ Saved {final_data.shape[0]} paths to {file_name}")
+
+# Function to save graph paths as .txt files or .csv files
+def save_latent_paths_graph(trajectories, dir_name="./benchmark/results", file_name="graph_latent_paths_BM.pt"):
+    """
+    Consolidates 3,500 paths into a single structured file for efficiency.
+
+    Args:
+        trajectories: List of tensors or arrays.
+        dir_name: Directory to store the bundle.
+        file_name: The name of the aggregate file.
+    """
+    # 1. Ensure directory exists
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    processed_bundle = []
+
+    for traj in trajectories:
+        # Convert to torch tensor if it's numpy
+        t = torch.as_tensor(traj)
+
+        # 2. Reshape logic to ensure (1, 100, 2)
+        # If input is [100, 2], it becomes [1, 100, 2]
+        if t.dim() == 2:
+            t = t.unsqueeze(0)
+        # If it's already [1, 100, 2], this ensures it's correct
+        elif t.dim() == 3 and t.shape[0] != 1:
+            # Handle cases where batch might be squeezed
+            t = t[0:1, :, :]
+
+        processed_bundle.append(t.detach().cpu())
+
+    # 3. Stack into a single giant tensor [3500, 100, 2]
+    # OR keep as a list of [1, 100, 2] tensors.
+    # Stacking is usually better for Batch processing later.
+    final_data = torch.cat(processed_bundle, dim=0) # Result: [3500, 100, 2]
+
+    # 4. Save to disk
+    save_path = os.path.join(dir_name, file_name)
+    torch.save(final_data, save_path)
+
+    print(f"✅ Discrete Latent Paths Exported! Shape: {final_data.shape}")
+    print(f"Successfully exported: {save_path}")

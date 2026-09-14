@@ -4,11 +4,13 @@ import torch.distributions as td
 import numpy as np
 import pickle
 from stochman import nnj
+from stochman.manifold import EmbeddedManifold
 import hyperspherical_vae.distributions.von_mises_fisher as vmf
 from sklearn.cluster import KMeans
+from GeodesicMotionSkills.Experiments.Utils.environment import Environment
 
 ###Create VAE Class --> To reconsider as it migth not be needed
-class VAE(nn.Module):
+class VAE(nn.Module, EmbeddedManifold):
     # (Note: I removed EmbeddedManifold inheritance here assuming you just need standard nn.Module,
     # but keep it if StochMan strictly requires it)
 
@@ -26,6 +28,7 @@ class VAE(nn.Module):
                 sigma_z:    the scale parameter of the distribution given as the output of the VAE's encoder
         """
         super(VAE, self).__init__()
+        self.env = Environment()
 
         #architecture
         self.p = int(layers[0])  # Dimension of x
@@ -39,6 +42,8 @@ class VAE(nn.Module):
         self.batch_size = batch_size
         self.num_clusters = 500  # Number of clusters in the RBF k_mean
         self.vmf_concentration_scale = 1e2  # the scale of vmf distribution concentration
+
+        self.time_step = 0
 
         #  Initialize VAE
         enc = []

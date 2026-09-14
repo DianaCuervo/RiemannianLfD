@@ -61,7 +61,8 @@ class DiscretizedManifold:
         line = CubicSpline(begin=torch.zeros(1, dim), end=torch.ones(1, dim), num_nodes=2)
         t = torch.linspace(0, 1, 5)
         self.fixed_positions = {}
-        self.decoded_positions = torch.zeros((xsize * ysize, 2))
+        #self.decoded_positions = torch.zeros((xsize * ysize, 2)) ###---> Orginal code
+        self.decoded_positions = torch.zeros((xsize * ysize, model.pos_dof))
 
         for x in range(xsize):
             for y in range(ysize):
