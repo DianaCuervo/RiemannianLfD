@@ -8,6 +8,7 @@ from stochman.manifold import Manifold
 from benchmark.data_utils import load_test_config, save_latent_paths_stochman
 from benchmark.metrics import calculate_ground_metrics_chuncked, decode_latente_paths, decode_latent_goals, \
     calculate_euclidean_metrics
+from node.utils.plots import visualize_gtvspred_comparison_multiple, save_test_plot
 
 
 def stochman_benchmark(model , z1_test, z2_test):
@@ -42,7 +43,7 @@ def stochman_benchmark(model , z1_test, z2_test):
     return all_geodesics
 
 
-def run_stochman_benchmark(dataset_cfg, dataset_type, shape_name, results_dir, device, vae_model):
+def run_stochman_benchmark(dataset_cfg, fw_cfg,  dataset_type, shape_name, results_dir, device, vae_model):
     """
     Evaluates the NODE framework against the benchmark test set.
     """
@@ -116,6 +117,7 @@ def run_stochman_benchmark(dataset_cfg, dataset_type, shape_name, results_dir, d
     # ==========================================
     # 4. SAVE RESULTS
     # ==========================================
+    print(f"\n💾 Saving evidences...")
     metrics_report = {
         "framework": "Stochman",
         "dataset": dataset_type,
@@ -138,6 +140,19 @@ def run_stochman_benchmark(dataset_cfg, dataset_type, shape_name, results_dir, d
     with open(json_path, 'w') as f:
         json.dump(metrics_report, f, indent=4, cls=NumpyEncoder)
 
-    print(f"\n💾 Metrics saved to: {json_path}")
+    print(f"\n✅ Metrics saved to: {json_path}")
 
     save_latent_paths_stochman(trajectories, dir_name=results_dir, file_name="stochman_predictions.pt")
+
+    print(f"Ploting in progress...")
+    results_space = f"{dataset_type.upper()}"
+    dataset_shape = shape_name+'-Shape'
+    if dataset_type == "lasa":
+        results_space = f"{dataset_shape}"
+    points_dim = fw_cfg['axis_points']
+    dataset_fw_cfg = fw_cfg[dataset_type]
+    latent_max = dataset_fw_cfg.get('latent_frame', '10')
+    number_samples = stochman_predictions.shape[0]
+    visualize_gtvspred_comparison_multiple(stochman_predictions, ground_truth, vae_model, device, results_space, points_dim, latent_max,
+                                           num_samples=number_samples, model_name="Stochman")
+    save_test_plot(save_dir=results_dir, filename=f"stochman_plots.svg")

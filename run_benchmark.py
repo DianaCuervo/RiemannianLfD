@@ -75,16 +75,16 @@ def load_respective_vae(args, device):
 
     ### Visualization of Manifold
     # Extract latent_frame from the config
-    space_title = ''
-    if args.dataset == 'toy':
-        space_title = args.dataset.upper()
-    if args.dataset == 'lasa':
-        space_title = args.dataset.upper() + ' ' +args.shape+ '-Shape'
-    if args.dataset == 'robot':
-            space_title = args.dataset.upper() + ' Experiment'
-    l_max = vae_cfg['visualization']['latent_frame']
-    visualize_metric(vae_model, space_title, l_max)
-    plt.show()
+    # space_title = ''
+    # if args.dataset == 'toy':
+    #     space_title = args.dataset.upper()
+    # if args.dataset == 'lasa':
+    #     space_title = args.dataset.upper() + ' ' +args.shape+ '-Shape'
+    # if args.dataset == 'robot':
+    #         space_title = args.dataset.upper() + ' Experiment'
+    # l_max = vae_cfg['visualization']['latent_frame']
+    # visualize_metric(vae_model, space_title, l_max)
+    # plt.show()
 
     return vae_model
 
@@ -175,7 +175,7 @@ def main():
             run_graph_benchmark(dataset_cfg, fw_cfg, args.dataset, args.shape, results_dir, device, vae_model)
         elif fw == 'stochman':
             print("Stochman evaluation...")
-            run_stochman_benchmark(dataset_cfg, args.dataset, args.shape, results_dir, device, vae_model)
+            run_stochman_benchmark(dataset_cfg, fw_cfg, args.dataset, args.shape, results_dir, device, vae_model)
 
     print("\n" + "=" * 50)
     print("✅ All requested benchmarks completed successfully!")

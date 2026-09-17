@@ -454,8 +454,11 @@ def visualize_path_comparison(model, vae, test_loader, space_name, latent_frame,
     plt.figure(figsize=(frame, frame))
 
     # 1. Plot Background Energy (Rough approximation using metric determinant)
-    x_range = np.linspace(-frame, frame, 100)
-    y_range = np.linspace(-frame, frame, 100)
+    point_dim = 100
+    x_axis = np.linspace(-frame, frame, point_dim)
+    y_axis = np.linspace(-frame, frame, point_dim)
+    x_range = np.linspace(-frame, frame, point_dim)
+    y_range = np.linspace(-frame, frame, point_dim)
     xx, yy = np.meshgrid(x_range, y_range)
     grid_pts = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32).to(p1.device)
 
@@ -581,6 +584,77 @@ def visualize_random_points_comparison(model, vae, test_loader, space_name, late
     #plt.tight_layout(pad=3)
     #plt.show()
     print("Successful.")
+
+### Plot fns for benchmark testing
+def visualize_gtvspred_comparison_multiple(proxy_geo, z_real, vae_model, device, space_name, axis_point, latent_frame, num_samples=10, model_name = " "):
+    """
+        Standardized Inputs:
+        z_real:    [Batch, Time, 2] -> e.g., [7, 500, 2]
+        proxy_geo: [Batch, Time, 2] -> e.g., [7, 500, 2]
+    """
+    # Create plot with predetermined size
+    frame = latent_frame+5
+    plt.figure(figsize=(frame, frame))
+
+    # 1. Background: Energy Manifold
+    vae_model.eval()
+    torch.manual_seed(42)
+
+    point_dim = axis_point
+    x_axis = np.linspace(-frame, frame, point_dim)
+    y_axis = np.linspace(-frame, frame, point_dim)
+    xx, yy = np.meshgrid(x_axis, y_axis, indexing='ij')
+    grid_pts = torch.tensor(np.stack([xx.ravel(), yy.ravel()], axis=1), dtype=torch.float32).to(device)
+
+    with torch.no_grad():
+        # Using your get_M function
+        _, _, G = get_M(vae_model, grid_pts.clone())
+        G_torch = G.clone().detach() #torch.tensor(G)
+        # Determinant calculation for the background heatmap
+        det_G = torch.det(G_torch).cpu().numpy().reshape(xx.shape)
+
+    safe_det = np.clip(det_G, 1e-10, None) #mf_flat = torch.log(torch.sqrt(torch.abs(det_G) + 1e-10))
+    # Plot Background
+    cp = plt.contourf(xx, yy, np.log10(safe_det), cmap='YlOrRd', alpha=0.3)
+    plt.colorbar(cp, label='Magnification Factor')
+
+    # 2. Iterate through the Batch (The 7 Paths)
+    #num_paths = z_real.shape[0]
+    num_paths = num_samples
+    #path_idx = np.random.randint(0, proxy_geo.shape[0]-1, size=num_paths)
+
+    # Plot Trajectories
+    for i in range(num_paths):
+    #for ix in range(num_paths):
+        #idx = path_idx[ix]
+        #i=idx
+        # Extract specific path data
+        z_target_np = z_real[i].detach().cpu().numpy()  # [500, 2]
+        z_pred_np = proxy_geo[i].detach().cpu().numpy()  # [500, 2]
+
+        plt.plot(z_target_np[:, 0], z_target_np[:, 1], 'k--', color='black', label='Ground Truth (Demo)', alpha=0.8, linewidth=1)
+        plt.plot(z_pred_np[:, 0], z_pred_np[:, 1], color='black', label=f'{model_name} Prediction', linewidth=2)
+
+        # 3. Markers
+        # Expected (Yellow Stars/Circles)
+        plt.scatter(z_target_np[0, 0], z_target_np[0, 1], marker='o', color='yellow', edgecolors='black', s=150, label="GT Start")
+        plt.scatter(z_target_np[-1, 0], z_target_np[-1, 1], marker='*', color='yellow', edgecolors='black', s=200, label="GT Goal")
+
+        # Predicted (Green/Red dots)
+        plt.scatter(z_pred_np[0, 0], z_pred_np[0, 1], marker='o', color='green', s=50, label="Pred Start")
+        plt.scatter(z_pred_np[-1, 0], z_pred_np[-1, 1], marker='o', color='red', s=30, label="Pred End")
+
+        if i == 0:
+        #if ix == 0:
+            plt.legend(loc = "lower center")
+
+    # Clean up and show
+    plt.title(f'Benchmark Comparison for {space_name}: Ground Truth vs {model_name} Model ({num_paths} Predicted Trajectories)')
+    plt.xlabel('z1')
+    plt.ylabel('z2')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.axis('equal')
+    plt.show()
 
 def save_test_plot(save_dir, filename):
     """

@@ -42,23 +42,28 @@ datasets:
 
 frameworks:
   graph:
+    axis_points: 100
     graph_size: 100
     toy:
       latent_frame: 10
     lasa:
       latent_frame: 15
   stochman:
-    results_file: "iterative_latent_paths.pt"
-  node:
-    # Use placeholders here too, so the benchmark knows exactly which model to load!
-    #  model_path: "./models/node/{dataset}/NODE_{dataset}_{shape}_RiemannianMSE_EGI.pth"
-    #  results_file: "node_latent_paths.pt"
+    axis_points: 100
     toy:
+      latent_frame: 10
+    lasa:
+      latent_frame: 15
+  node:
+    axis_points: 100
+    toy:
+      latent_frame: 10
       latent_dim: 2
       hidden_dim: 256
       model_dir: './models/node/toy_example'
       model_name: 'NODE_{shape}RiemannianMSE_EGI'
     lasa:
+      latent_frame: 15
       model_dir: './models/node/lasa'
       model_name: 'NODE_{shape}RiemannianMSE_EGI'
       N:
