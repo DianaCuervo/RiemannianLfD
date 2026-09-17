@@ -654,7 +654,7 @@ def visualize_gtvspred_comparison_multiple(proxy_geo, z_real, vae_model, device,
     plt.ylabel('z2')
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.axis('equal')
-    plt.show()
+    #plt.show()
 
 def save_test_plot(save_dir, filename):
     """

@@ -76,7 +76,7 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg,  dataset_type, shape_name, resul
     print("\nRunning Inference...")
     start_time = time.time()
 
-    stochman_latent_paths_BM = stochman_benchmark(vae_model, z1[:3], z2[:3])
+    stochman_latent_paths_BM = stochman_benchmark(vae_model, z1, z2)
 
     end_time = time.time()
 
@@ -89,7 +89,7 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg,  dataset_type, shape_name, resul
     trajectories = all_geodesic_coords
 
     stochman_predictions = torch.stack(trajectories)
-    ground_truth = ground_truth[:3]
+    ground_truth = ground_truth
     print(f"Ground Shape: {ground_truth.shape}")
     print(f"Stochman predictions shape: {stochman_predictions.shape}")
 
@@ -111,7 +111,7 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg,  dataset_type, shape_name, resul
     predicted_goals = euclidean_paths_p[:, -1, :]
 
     euclidean_metrics = calculate_euclidean_metrics(
-        euclidean_paths_p, euclidean_paths_g, predicted_goals, euclidean_goals_g[:3]
+        euclidean_paths_p, euclidean_paths_g, predicted_goals, euclidean_goals_g
     )
 
     # ==========================================

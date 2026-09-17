@@ -91,7 +91,7 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, dataset_type, shape_name, results_d
 
     start_time = time.time()
 
-    graph_latent_paths_BM = graph_benchmark(vae_model, z1[:3], z2[:3], t_steps, discrete_model=discrete_model)
+    graph_latent_paths_BM = graph_benchmark(vae_model, z1, z2, t_steps, discrete_model=discrete_model)
 
     end_time = time.time()
 
@@ -100,7 +100,7 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, dataset_type, shape_name, results_d
         for path in graph_latent_paths_BM
     ])
     graph_predictions = graph_predictions.squeeze()
-    ground_truth = ground_truth[:3]
+    ground_truth = ground_truth
     print(f"Ground Shape: {ground_truth.shape}")
     print(f"Graph predictions shape: {graph_predictions.shape}")
 
@@ -122,7 +122,7 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, dataset_type, shape_name, results_d
     predicted_goals = euclidean_paths_p[:, -1, :]
 
     euclidean_metrics = calculate_euclidean_metrics(
-        euclidean_paths_p, euclidean_paths_g, predicted_goals, euclidean_goals_g[:3]
+        euclidean_paths_p, euclidean_paths_g, predicted_goals, euclidean_goals_g
     )
 
     # ==========================================

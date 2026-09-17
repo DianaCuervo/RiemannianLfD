@@ -154,5 +154,5 @@ def run_node_benchmark(dataset_cfg, fw_cfg, dataset_type, shape_name, results_di
     latent_max = dataset_fw_cfg.get('latent_frame', '10')
     number_samples = proxy_geos.shape[0]
     visualize_gtvspred_comparison_multiple(proxy_geos, ground_data, vae_model, device, results_space, points_dim, latent_max,
-                                           num_samples=10, model_name="NODE")
+                                           num_samples=number_samples, model_name="NODE")
     save_test_plot(save_dir=results_dir, filename=f"node_plots.svg")
