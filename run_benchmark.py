@@ -57,7 +57,7 @@ def load_training_config(file_path, dataset, shape=None):
 # ==========================================
 # VAE PREPARATION
 # ==========================================
-def load_respective_vae(args):
+def load_respective_vae(args, device):
     # 1. Load VAE Config to find the model
     vae_cfg = load_training_config('config_files/vae_config.yaml', args.dataset, args.shape)
     original_path = vae_cfg['training_artifacts']['model_path']
@@ -70,7 +70,8 @@ def load_respective_vae(args):
     total_dof = vae_cfg['architecture']['pos_dof'] + vae_cfg['architecture']['qua_dof']
     dummy_data = torch.randn(100, total_dof)
     vae_model = load_pretrained_vae(vae_cfg, dummy_data)
-    print(f"VAE Model initialized with DOF={total_dof}")
+    vae_model.to(device).eval()
+    print(f"VAE Model initialized with DOF={total_dof} on {device.upper()}")
 
     ### Visualization of Manifold
     # Extract latent_frame from the config
@@ -104,7 +105,7 @@ def prepare_benchmark_data(dataset_cfg, args, device):
 
     # 1. Load VAE
     print("Loading VAE for dataset generation...")
-    vae_model = load_respective_vae(args)
+    vae_model = load_respective_vae(args, device)
 
     # 2. Generate the Data
     print("Slicing and processing benchmark segments...")
@@ -147,7 +148,7 @@ def main():
     print("\n Preparing datasets...")
     prepare_benchmark_data(dataset_cfg, args, device)
     print("\n Preparing Latent Space...")
-    vae_model = load_respective_vae(args)
+    vae_model = load_respective_vae(args, device)
 
     print("\n✅ Setup complete! Ready to run framework evaluations.")
 
