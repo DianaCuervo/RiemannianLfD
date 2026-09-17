@@ -17,9 +17,9 @@ datasets:
     s2_letter: "C"
     # Preprocessing params for benchmark generation
     interpolation_points: 500
-    min_window: 80
-    max_window: 480
-    samples_per_path: 250
+    min_window: 100
+    max_window: 490
+    samples_per_path: 500
     time_steps: 100
     # Benchmark-specific save paths
     benchmark_dir: './benchmark/data/toy'
@@ -32,9 +32,9 @@ datasets:
     origin_file: '{shape}_UQ.mat'
     trajectory_number: 7
     # Preprocessing params for benchmark generation
-    min_window: 180
+    min_window: 200
     max_window: 980
-    samples_per_path: 250
+    samples_per_path: 500
     time_steps: 100
     # Benchmark-specific save paths (dynamically replaces {shape})
     benchmark_dir: './benchmark/data/lasa_{shape}'
