@@ -5,6 +5,7 @@ import torch
 import numpy as np
 
 from stochman.manifold import Manifold
+from stochman.curves import CubicSpline
 from benchmark.data_utils import load_test_config, save_latent_paths_stochman
 from benchmark.metrics import calculate_ground_metrics_chuncked, decode_latente_paths, decode_latent_goals, \
     calculate_euclidean_metrics
@@ -20,19 +21,24 @@ def stochman_benchmark(model , z1_test, z2_test):
             output:
                 all_geodesics       geodesic in latent space
             """
+    device = next(model.parameters()).device
+
     p0 = z1_test
     p1 = z2_test
     all_geodesics = []
     success_count = 0
 
     for i in range(p0.shape[0]):
-        # Extract single points: [2]
-        p0_single = p0[i]
-        p1_single = p1[i]
+        # Extract single points: [1,2]
+        p0_single = p0[i].unsqueeze(0)
+        p1_single = p1[i].unsqueeze(0)
 
         # Calculate one geodesic
         try:
-            C, success = Manifold.connecting_geodesic(model, p0_single, p1_single)
+            # FIX: Create the manifold curve here and push it to the GPU
+            init_curve = CubicSpline(p0_single, p1_single).to(device)
+
+            C, success = Manifold.connecting_geodesic(model, p0_single, p1_single, init_curve=init_curve)
             #if success:
             all_geodesics.append(C)
             success_count += 1
