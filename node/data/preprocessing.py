@@ -71,23 +71,26 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
 
         for _ in range(samples_per_path):
             ### Original segmentation code
-            # # 1. Randomize the "Trip Duration" (Window Size) --> original line
-            # #win_size = np.random.randint(min_window, max_window)
-            #
-            # # 1. Choose a "Tier" based on 30/50/20 distribution
-            # roll = random.random()
-            # if roll < 0.35:  # SHORT (Precision)
-            #     win_size = random.randint(min_window, (num_steps//2)-100)
-            # elif roll < 0.70:  # MEDIUM (Flow)
-            #     win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
-            # else:  # LONG (Global context)
-            #     win_size = random.randint(((num_steps//2)+100)+1, max_window)
-            #
-            # # 2. Pick a random start point
-            # if num_steps <= win_size:
-            #     continue
-            # start = np.random.randint(0, num_steps - win_size)
-            # end = start + win_size
+            # 1. Randomize the "Trip Duration" (Window Size) --> original line
+            #win_size = np.random.randint(min_window, max_window)
+
+            # 1. Choose a "Tier" based on 30/50/20 distribution
+            roll = random.random()
+            if roll < 0.35:  # SHORT (Precision)
+                #win_size = random.randint(min_window, (num_steps//2)-100)
+                win_size = random.randint(min_window, (num_steps//2)-150)
+            elif roll < 0.70:  # MEDIUM (Flow)
+                #win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+                win_size = random.randint(((num_steps//2)-150) + 1, (num_steps//2)+150)
+            else:  # LONG (Global context)
+                #win_size = random.randint(((num_steps//2)+100)+1, max_window)
+                win_size = random.randint(((num_steps//2)+150)+1, max_window)
+
+            # 2. Pick a random start point
+            if num_steps <= win_size:
+                continue
+            start = np.random.randint(0, num_steps - win_size)
+            end = start + win_size
 
             ### Debug segmentation code --- Try1
             # roll = random.random()
@@ -117,9 +120,9 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
             #     start = random.randint(0, num_steps - win_size)
             #     end = start + win_size
 
-            ### Debug segmentation code --- Try2
-            start = random.randint(0, min_window)
-            end = random.randint(num_steps - min_window, num_steps)
+            ### Debug segmentation code for N --- Try2 --> Debus still in progress
+            #start = random.randint(0, min_window)
+            #end = random.randint(num_steps - min_window, num_steps)
 
             # 3. Extract Segment
             z_segment = path[start:end, :].clone()
