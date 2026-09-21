@@ -140,12 +140,12 @@ lasa:
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
-      step_size: 0.025
+      step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
       learning_rate: 1.0e-4 #2.1e-3--> Optuna value
       lr_gamma: 0.1
-      lr_drop_fraction: 0.4
+      lr_drop_fraction: 0.8
       batch_size: 32
       epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
@@ -155,8 +155,8 @@ lasa:
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 0.0001   # The shrink ray
-        ramp_start: 300      # Epoch when goal/energy pressure begins
-        ramp_length: 900    # How many epochs it takes to reach max weight
+        ramp_start: 500      # Epoch when goal/energy pressure begins
+        ramp_length: 1500    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
         w_goal_target: 150.0  # What goal weight ramps up to
