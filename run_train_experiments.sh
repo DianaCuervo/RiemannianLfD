@@ -12,6 +12,7 @@ run_dataset() {
         echo "================================================================="
 
         python main.py --mode train --dataset $dataset --shape $shape
+        # python run_benchmark.py --framework stochman --dataset lasa --shape $shape
 
         echo "✅ Finished training for $dataset - $shape!"
         echo ""

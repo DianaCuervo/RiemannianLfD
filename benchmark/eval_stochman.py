@@ -32,6 +32,7 @@ def stochman_benchmark(model , z1_test, z2_test):
         # Extract single points: [1,2]
         p0_single = p0[i].unsqueeze(0)
         p1_single = p1[i].unsqueeze(0)
+        # print(p0.device, p1.device, p0_single.device, p1_single.device)
 
         # Calculate one geodesic
         try:
@@ -44,6 +45,7 @@ def stochman_benchmark(model , z1_test, z2_test):
             success_count += 1
         except Exception as e:
             print(f"Failed at index {i}: {e}")
+            break
 
     print(f"Successfully calculated {success_count}/{p0.shape[0]} geodesics.")
     return all_geodesics

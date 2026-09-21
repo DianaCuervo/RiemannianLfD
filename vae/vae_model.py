@@ -78,7 +78,7 @@ class VAE(nn.Module, EmbeddedManifold):
 
         self.encoder_scale_fixed = nn.Parameter(torch.tensor([sigma_z]), requires_grad=False)
         self.decoder_scale_pos = nn.Parameter(torch.tensor(sigma), requires_grad=False)
-        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, 3)) *
+        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, 4)) *
                                                            self.vmf_concentration_scale), requires_grad=False)
         self.dec_std_pos = lambda z: torch.ones(20, self.p, device=self.device)
         self.dec_std_qua = lambda z: torch.ones(20, self.p, device=self.device)
@@ -86,6 +86,23 @@ class VAE(nn.Module, EmbeddedManifold):
         self.prior_loc = nn.Parameter(torch.zeros(self.d), requires_grad=False)
         self.prior_scale = nn.Parameter(torch.ones(self.d), requires_grad=False)
         self.prior = td.Independent(td.Normal(loc=self.prior_loc, scale=self.prior_scale), 1)
+
+    def to(self, *args, **kwargs):
+        module = super().to(*args, **kwargs)
+        device, _, _, _ = torch._C._nn._parse_to(*args, **kwargs)
+        if device is not None:
+            module.device = device
+        return module
+
+    def cuda(self, device=None):
+        module = super().cuda(device)
+        module.device = next(module.parameters()).device
+        return module
+
+    def cpu(self):
+        module = super().cpu()
+        module.device = torch.device('cpu')
+        return module
 
     def embed(self, points, jacobian=False):
         """

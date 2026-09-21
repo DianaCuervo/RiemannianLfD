@@ -299,6 +299,7 @@ class Manifold(ABC):
                 then the curve is modified accordingly. If None then the default constructor
                 of the chosen curve family is applied.
         """
+        # print(p0.device, p1.device)
         if init_curve is None:
             curve = CubicSpline(p0, p1)
         else:
@@ -307,6 +308,7 @@ class Manifold(ABC):
             curve.end = p1
 
         # success = geodesic_minimizing_energy_sgd(curve, self)
+        # print(curve.device, p0.device, p1.device)
         success = geodesic_minimizing_energy(curve, self)
         return curve, success
 
@@ -606,7 +608,7 @@ class LocalVarMetric(Manifold):
         """
         if len(c.shape) == 2:
             c.unsqueeze_(0)  # add batch dimension if one isn't present
-        energy = torch.zeros(1)
+        energy = torch.zeros(1, device=c.device)
         for b in range(c.shape[0]):
             M = self.metric(c[b, :-1])  # (P-1)xD
             delta1 = (c[b, 1:] - c[b, :-1]) ** 2  # (P-1)xD

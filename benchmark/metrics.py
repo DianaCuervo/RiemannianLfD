@@ -44,9 +44,12 @@ def decode_latente_paths(vae_model, latent_paths):
             pos_dist, qua_dist = vae_model.decode(z_chunk)
 
             # Extract Means
+            # print(pos_dist.mean.shape, qua_dist.loc.shape)
+
             p_m = pos_dist.mean  # [128, 3]
-            #q_m = qua_dist.mean  # [128, 2/4] #--> Original line
-            q_m = qua_dist.loc  # [128, 2/4]
+            q_m = qua_dist.mean  # [128, 2/4] #--> Original line
+            # q_d = qua_dist.loc  # [128, 2/4]
+            # print(f"p_m shape: {p_m.shape}, q_m shape: {q_m.shape}, q_d shape: {q_d.shape}")
 
             combined = torch.cat([p_m, q_m], dim=-1)
 
