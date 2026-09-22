@@ -1,0 +1,85 @@
+{
+    "framework": "graph",
+    "dataset": "lasa",
+    "shape": "Leaf_1",
+    "num_waypoints": 5,
+    "time_steps": 500,
+    "seed": 4,
+    "rbf_beta": 2.95849871635437,
+    "graph_build_time_seconds": 52.32846373199936,
+    "total_planning_time_seconds": 2.778084064999348,
+    "segments": [
+        {
+            "segment": 0,
+            "planning_time_seconds": 2.5569636479995097,
+            "ik_pos_err_mm": {
+                "mean": 0.4007647575847461,
+                "max": 0.4995021471219771
+            },
+            "ik_ori_err_deg": {
+                "mean": 0.08797971198287911,
+                "max": 0.5956100422084785
+            },
+            "tracking_err_mm": 2.5900702726389517,
+            "goal_err_mm": 2.7098397652346873,
+            "path_length_m": 0.14569042214615988,
+            "mean_jerk": 6.388035837110928e-08,
+            "max_quat_step_deg": 0.07912936061620712,
+            "replay_time_seconds": 0.5755521870005396
+        },
+        {
+            "segment": 1,
+            "planning_time_seconds": 0.08162274999995134,
+            "ik_pos_err_mm": {
+                "mean": 0.3971798337319868,
+                "max": 0.4995308553317841
+            },
+            "ik_ori_err_deg": {
+                "mean": 0.05123737262255828,
+                "max": 0.21136629773995402
+            },
+            "tracking_err_mm": 2.8608365028344105,
+            "goal_err_mm": 5.552147097057029,
+            "path_length_m": 0.12915528613824653,
+            "mean_jerk": 1.3542552960286312e-07,
+            "max_quat_step_deg": 0.13705608248710632,
+            "replay_time_seconds": 0.6070922230001088
+        },
+        {
+            "segment": 2,
+            "planning_time_seconds": 0.06830955500026903,
+            "ik_pos_err_mm": {
+                "mean": 0.4076380221686889,
+                "max": 0.4989309486637339
+            },
+            "ik_ori_err_deg": {
+                "mean": 0.10290138810166172,
+                "max": 0.22959895879723732
+            },
+            "tracking_err_mm": 5.2484475283909955,
+            "goal_err_mm": 6.585073995534604,
+            "path_length_m": 0.1803891190010405,
+            "mean_jerk": 1.879896682925286e-07,
+            "max_quat_step_deg": 0.12511450052261353,
+            "replay_time_seconds": 0.5145973759999833
+        },
+        {
+            "segment": 3,
+            "planning_time_seconds": 0.07118811199961783,
+            "ik_pos_err_mm": {
+                "mean": 0.3601396108872833,
+                "max": 0.49980456073550705
+            },
+            "ik_ori_err_deg": {
+                "mean": 0.07963508043870761,
+                "max": 0.15082705266478336
+            },
+            "tracking_err_mm": 5.89007649929697,
+            "goal_err_mm": 9.917971993319696,
+            "path_length_m": 0.11043565821641975,
+            "mean_jerk": 8.143231447406892e-08,
+            "max_quat_step_deg": 0.08846931159496307,
+            "replay_time_seconds": 0.48339704899990465
+        }
+    ]
+}

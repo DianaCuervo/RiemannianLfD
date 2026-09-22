@@ -1,0 +1,44 @@
+# config_files/simulation_config.yaml
+# Settings for simulation_benchmark.py -- replaying planned latent geodesics on a
+# simulated Franka Panda. Values ported from the hardcoded constants in
+# GeodesicMotionSkills' toy_example.py.
+
+results_base_dir: './benchmark/results_simulation'
+
+mujoco:
+  xml_path: './Simulation/franka_emika_panda/panda_ee_site.xml'
+  ee_site: 'ee_site'
+  joints: ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
+  timestep: 0.001
+  waypoint_substeps: 4          # physics steps used to ease into each IK-solved target
+  settle_steps: 300             # extra steps holding the last command, so the measured
+                                # end pose reflects the trajectory, not actuator lag
+  # Placing the de-normalized LASA trace (~47 x 47 units) in front of the robot. At
+  # toy_example.py's 0.01 the shape spans 0.48 m and its far corner sits 0.92 m from the
+  # base -- past the Panda's ~0.855 m reach. 0.006 gives a 0.29 x 0.28 m workspace with a
+  # 0.51-0.74 m reach. (toy_example.py never hit this because it fed the *normalized*
+  # trace to the robot while de-normalizing only the markers.)
+  workspace_target: [0.50, 0.0, 0.35]   # where the waypoint centroid is placed, in metres
+  pos_xy_scale: 0.006           # LASA units -> metres, to fit the Panda workspace
+
+ik:
+  max_iter: 50
+  step: 0.4
+  lam: 1.0e-4
+  tol_pos: 5.0e-4
+  tol_ori: 1.7e-2
+
+frameworks:
+  graph:
+    graph_size: 100             # nodes per latent axis
+    lasa:
+      latent_frame: 15          # grid spans [-latent_frame, +latent_frame]
+
+datasets:
+  lasa:
+    origin_dir: './datasets/lasa'
+    origin_file: '{shape}_UQ.mat'
+    trajectory_number: 7
+    test_id: 3                  # demo the A-E waypoints are sampled from
+    num_waypoints: 5
+    time_steps: 500             # points evaluated along each geodesic
