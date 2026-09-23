@@ -89,7 +89,7 @@ lasa:
       lr_gamma: 0.1
       lr_drop_fraction: 0.83
       batch_size: 32
-      epochs: 3000
+      epochs: 2500
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -100,9 +100,9 @@ lasa:
         ramp_start: 500      # Epoch when goal/energy pressure begins
         ramp_length: 1500    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 250.0  # What goal weight ramps up to
-        w_ener_target: 0.1   # What energy weight ramps up to
+        w_goal_start: 0.0    # What goal weight starts at when ramp begins
+        w_goal_target: 0.0  # What goal weight ramps up to
+        w_ener_target: 0.0   # What energy weight ramps up to
   Angle:
     # Model Architecture Parameters
     architecture:
@@ -205,7 +205,7 @@ lasa:
       lr_gamma: 0.1
       lr_drop_fraction: 0.8
       batch_size: 32 #16 totrain by Optuna - 32 totest
-      epochs: 3000
+      epochs: 2500
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -216,6 +216,6 @@ lasa:
         ramp_start: 500      # Epoch when goal/energy pressure begins
         ramp_length: 1500    # How many epochs it takes to reach max weights
         w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 100.0  # What goal weight ramps up to
-        w_ener_target: 0.5   # What energy weight ramps up to
+        w_goal_start: 0.0    # What goal weight starts at when ramp begins
+        w_goal_target: 0.0  # What goal weight ramps up to
+        w_ener_target: 0.0   # What energy weight ramps up to
