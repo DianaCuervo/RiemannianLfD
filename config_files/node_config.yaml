@@ -136,7 +136,7 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 512 # PShape needs a wider network as 512
+      hidden_dim: 256 # PShape needs a wider network as 512
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
@@ -165,11 +165,11 @@ lasa:
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
-      hidden_dim: 512     # Optimized
+      hidden_dim: 256     # Optimized
     # Integration Parameters (for the RK4 solver)
     integration:
       method: 'rk4'
-      step_size: 0.05
+      step_size: 0.025
     # Training Hyperparameters (for the train loop!)
     training:
       learning_rate: 1.0e-4 #2.36e-3-->Optuna value
