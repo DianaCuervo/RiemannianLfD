@@ -74,12 +74,12 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
             # 1. Randomize the "Trip Duration" (Window Size) --> original line
             #win_size = np.random.randint(min_window, max_window)
 
-            # 1. Choose a "Tier" based on 30/50/20 distribution
+            # 1. Choose a "Tier" based on 30/35/35 distribution
             roll = random.random()
-            if roll < 0.35:  # SHORT (Precision)
-                #win_size = random.randint(min_window, (num_steps//2)-100)
-                win_size = random.randint(min_window, (num_steps//2)-150)
-            elif roll < 0.70:  # MEDIUM (Flow)
+            if roll < 0.30:  # SHORT (Precision)
+                #win_size = random.randint(min_window, (num_steps//2)-100)  #--> Toy
+                win_size = random.randint(min_window, (num_steps//2)-150)   #--> lasa
+            elif roll < 0.65:  # MEDIUM (Flow)
                 #win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
                 win_size = random.randint(((num_steps//2)-150) + 1, (num_steps//2)+150)
             else:  # LONG (Global context)

@@ -73,7 +73,7 @@ class VAE(nn.Module):
 
         self.encoder_scale_fixed = nn.Parameter(torch.tensor([sigma_z]), requires_grad=False)
         self.decoder_scale_pos = nn.Parameter(torch.tensor(sigma), requires_grad=False)
-        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, 3)) *
+        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, qua_dof)) *
                                                            self.vmf_concentration_scale), requires_grad=False)
         self.dec_std_pos = lambda z: torch.ones(20, self.p, device=self.device)
         self.dec_std_qua = lambda z: torch.ones(20, self.p, device=self.device)
