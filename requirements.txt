@@ -29,6 +29,9 @@ optuna
 SQLAlchemy
 optuna-dashboard
 
+# --- Robotics & Datasets ---
+lerobot
+
 # --- Local Sub-packages ---
 -e ./s-vae-pytorch
 -e ./stochman

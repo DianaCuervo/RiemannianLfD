@@ -54,35 +54,64 @@ def main():
     # Catch the Command Line Arguments
     parser = argparse.ArgumentParser(description="Run RiemannianLfD")
     parser.add_argument('--mode', type=str, required=True, choices=['train', 'test'], help="Which mode to use")
-    parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'robot'], help="Which dataset to use")
+    parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
+    parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
     args = parser.parse_args()
-    print(f"Starting run for Dataset: {args.dataset.upper()} | Shape: {args.shape}")
+
+    if args.dataset == 'lasa':
+        complement = f"Shape: {args.shape}"
+    elif args.dataset == 'lerobot':
+        complement = f"Task: {args.task.upper()}"
+    else:
+        complement = ""
+    print(f"Starting run for Dataset: {args.dataset.upper()} | {complement}")
 
     # Load vae_config
     vae_cfg = load_and_filter_config('config_files/vae_config.yaml', args.dataset)
-    original_path = vae_cfg['training_artifacts']['model_path']
-    # Replace the '{shape}' placeholder with the actual shape from the command line
-    dataset_shape = args.shape+'-Shape'
-    #if args.shape != 'Angle' and args.shape != 'None':
-    #    dataset_shape = dataset_shape+'-Shape'
+    if args.dataset == 'lerobot':
+        vae_cfg = vae_cfg[args.task]
 
-    vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+    original_path = vae_cfg['training_artifacts']['model_path']
+    # Replace the '{shape}/{task}' placeholder with the actual data from the command line
+    if args.dataset == 'lasa':
+        dataset_shape = args.shape + '-Shape'
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+    elif args.dataset == 'lerobot':
+        dataset_task = args.task
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task)
+
     print(f"Loading VAE from: {vae_cfg['training_artifacts']['model_path']}")
 
     # Load node_config
     node_cfg = load_and_filter_config('config_files/node_config.yaml', args.dataset, args.shape)
+
+    #dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+    #model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+    #full_name = f"{dataset_type}_"
+
+    if args.dataset == 'toy':
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        full_name = f"{dataset_type}_"
+        model_name = model_name_template.replace('{type}', full_name)
+
     if args.dataset == 'lasa':
         node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['origin_file'] = node_cfg['dataset']['origin_file'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{shape}', dataset_shape)
-    dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
-    model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
-    full_name = f"{dataset_type}_"
-    if dataset_type == 'lasa':
-        #shape_name = node_cfg['dataset'].get('shape_name', 'UnknownShape')
         full_name = f"{dataset_type}_{dataset_shape}_"
-    model_name = model_name_template.replace('{shape}', full_name)
+        model_name = model_name_template.replace('{shape}', full_name)
+
+    if args.dataset == 'lerobot':
+        node_cfg = load_and_filter_config('config_files/node_config.yaml', args.dataset, dataset_task)
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{task}', dataset_task)
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', dataset_task)
+        full_name = f"{dataset_type}_{dataset_task}_"
+        model_name = model_name_template.replace('{task}', full_name)
+
     node_cfg['dataset']['model_name'] = model_name
 
     # Log Initialization
@@ -124,7 +153,7 @@ def main():
         train_ratio=node_cfg['dataset']['train_rat'],
         val_ratio=node_cfg['dataset']['val_rat'],
     )
-    ### Visualization of Manifold with processed demonstrations
+    # ## Visualization of Manifold with processed demonstrations
     # l_max = vae_cfg['visualization']['latent_frame']
     # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
     # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
