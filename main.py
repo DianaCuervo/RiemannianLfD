@@ -86,10 +86,6 @@ def main():
     # Load node_config
     node_cfg = load_and_filter_config('config_files/node_config.yaml', args.dataset, args.shape)
 
-    #dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
-    #model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
-    #full_name = f"{dataset_type}_"
-
     if args.dataset == 'toy':
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
@@ -97,6 +93,8 @@ def main():
         model_name = model_name_template.replace('{type}', full_name)
 
     if args.dataset == 'lasa':
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
         node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['origin_file'] = node_cfg['dataset']['origin_file'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{shape}', dataset_shape)
