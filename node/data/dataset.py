@@ -48,3 +48,8 @@ def export_test_set(test_loader, source_dir, target_dir="./test_datasets"):
         filename = file_list[idx]
         shutil.copy2(os.path.join(source_dir, filename), os.path.join(target_dir, filename))
     print(f"Exported {len(indices)} test files to {target_dir}")
+#Load test dataset
+def get_test_dataloader(data_folder_path, batch_size=32):
+    test_data = LatentTrajectoryDataset(data_folder_path)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+    return test_loader

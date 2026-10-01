@@ -17,10 +17,14 @@ node/training/training_curves/*.png
 
 # 4. Processed Data & Weights
 # Ignore dynamically generated dataset folders and PyTorch models
-node/data/*_processed/
+#node/data/*_processed/
 #*.pt
 *.pth
 *.pkl
+
+# ...but always keep the trained weights we ship with the repo
+!models/**/*.pt
+!models/**/*.pth
 #dataset_baselines.json
 
 # 5. IDEs and OS Files

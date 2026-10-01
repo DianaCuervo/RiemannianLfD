@@ -5,6 +5,7 @@ import copy
 import sys
 import os
 import json
+
 # --- NEW ABSOLUTE IMPORTS ---
 from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
@@ -16,6 +17,7 @@ from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_traj
     plot_save_training_results
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
 from node.utils.logger import ConsoleLogger  # (or wherever you saved it)
+from node.evaluation.node_test import load_trained_node, test_node
 
 # Load config files fn
 def load_and_filter_config(file_path, dataset, shape=None):
@@ -53,40 +55,63 @@ def main():
     ## Load of the configuration file according to the specific dataset/experiment
     # Catch the Command Line Arguments
     parser = argparse.ArgumentParser(description="Run RiemannianLfD")
-    parser.add_argument('--mode', type=str, required=True, choices=['train', 'test', 'train_vae', 'test_vae_with_graph'], help="Which mode to use")
+    parser.add_argument('--mode', type=str, required=True, choices=['train', 'test'], help="Which mode to use")
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
-    parser.add_argument('--shape', type=str, default='None',
-                         help="Specific shape for LASA (e.g., N, Angle) or dataset variant for lerobot (pick, place)")
+    parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
+    parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
     args = parser.parse_args()
-    print(f"Starting run for Dataset: {args.dataset.upper()} | Shape: {args.shape}")
+
+    if args.dataset == 'lasa':
+        complement = f"Shape: {args.shape}"
+    elif args.dataset == 'lerobot':
+        complement = f"Task: {args.task.upper()}"
+    else:
+        complement = ""
+    print(f"Starting run for Dataset: {args.dataset.upper()} | {complement}")
 
     # Load vae_config
-    # (shape drilling is a no-op for datasets whose vae_config.yaml block isn't
-    # shape-keyed, e.g. 'toy' and 'lasa' today - see load_and_filter_config)
-    vae_cfg = load_and_filter_config('config_files/vae_config.yaml', args.dataset, args.shape)
+    vae_cfg = load_and_filter_config('config_files/vae_config.yaml', args.dataset)
+    if args.dataset == 'lerobot':
+        vae_cfg = vae_cfg[args.task]
+
     original_path = vae_cfg['training_artifacts']['model_path']
-    # LASA pretrained files/folders follow a '{shape}-Shape' naming convention (e.g. 'N-Shape');
-    # other datasets (toy, lerobot) use the raw --shape value directly, or none at all.
-    dataset_shape = args.shape
+    # Replace the '{shape}/{task}' placeholder with the actual data from the command line
     if args.dataset == 'lasa':
         dataset_shape = args.shape + '-Shape'
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+    elif args.dataset == 'lerobot':
+        dataset_task = args.task
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task)
 
-    vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
     print(f"Loading VAE from: {vae_cfg['training_artifacts']['model_path']}")
 
     # Load node_config
     node_cfg = load_and_filter_config('config_files/node_config.yaml', args.dataset, args.shape)
+
+    if args.dataset == 'toy':
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        full_name = f"{dataset_type}_"
+        model_name = model_name_template.replace('{type}', full_name)
+
     if args.dataset == 'lasa':
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
         node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['origin_file'] = node_cfg['dataset']['origin_file'].replace('{shape}', dataset_shape)
         node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{shape}', dataset_shape)
-    dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
-    model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
-    full_name = f"{dataset_type}_"
-    if dataset_type in ('lasa', 'lerobot'):
-        #shape_name = node_cfg['dataset'].get('shape_name', 'UnknownShape')
         full_name = f"{dataset_type}_{dataset_shape}_"
-    model_name = model_name_template.replace('{shape}', full_name)
+        model_name = model_name_template.replace('{shape}', full_name)
+
+    if args.dataset == 'lerobot':
+        node_cfg = load_and_filter_config('config_files/node_config.yaml', args.dataset, dataset_task)
+        dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
+        model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{task}', dataset_task)
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', dataset_task)
+        full_name = f"{dataset_type}_{dataset_task}_"
+        model_name = model_name_template.replace('{task}', full_name)
+
     node_cfg['dataset']['model_name'] = model_name
 
     # Log Initialization
@@ -137,6 +162,11 @@ def main():
         train_ratio=node_cfg['dataset']['train_rat'],
         val_ratio=node_cfg['dataset']['val_rat'],
     )
+    ## Visualization of Manifold with processed demonstrations
+    l_max = vae_cfg['visualization']['latent_frame']
+    plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
+    plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
+    plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
 
     if args.mode == 'train':
         ### TRAIN NODE!
@@ -203,16 +233,38 @@ def main():
             filename=model_name + "_Training-Curves.svg"
         )
     elif args.mode == 'test':
-        print("\nTo Be Completed!")
-        ### Visualization of Manifold with processed demonstrations
-        # l_max = vae_cfg['visualization']['latent_frame']
-        # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
-        # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
-        # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
-    elif args.mode == 'test_vae_with_graph':
-        space_title = args.dataset.upper() + ('' if args.shape == 'None' else ' ' + dataset_shape)
-        test_vae_with_graph(vae, test_loader, space_name=space_title,
-                            latent_frame=vae_cfg['visualization']['latent_frame'])
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        # 1. Figure out where the model is saved based on the config
+        model_dir = node_cfg['dataset'].get('model_dir', f"./models/node/{args.dataset}")
+        model_path = os.path.join(model_dir, f"{model_name}.pth")
+        results_space = f"{dataset_type}"
+        if dataset_type == "lasa":
+            results_space = f"{dataset_shape}"
+
+
+        l_max = vae_cfg['visualization']['latent_frame']
+        test_results_dir = node_cfg['dataset'].get('model_test_results_dir', f"./results/node/{args.dataset}")
+        results_path = os.path.join(test_results_dir, f"{model_name}")
+
+        # 2. Load the trained NODE
+        trained_model = load_trained_node(
+            model_path=model_path,
+            latent_dim=latent_d,
+            hidden_dim=hidden_d,
+            device=device
+        )
+
+        # 3. Test function
+        test_node(
+            trained_model=trained_model,
+            vae_model=vae,
+            test_loader=test_loader,
+            save_dir=results_path,
+            device=device,
+            space_name=results_space.capitalize(),
+            latent_frame=l_max
+        )
     elif args.mode == 'benchmark':
         print("\nTo Be Completed!")
 

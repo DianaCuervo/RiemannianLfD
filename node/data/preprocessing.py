@@ -9,7 +9,9 @@ from scipy.io import loadmat
 import json
 
 from node.utils.hyperparameter_calculator import calculate_dataset_baselines
-from node.utils.plots import plot_trajectories
+from node.utils.plots import plot_trajectories, plot_trajectories_on_manifold
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
 
 ### SHARED UTILITIES
 #Dataset creation
@@ -61,6 +63,7 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
     # 1. Setup and Seed for consistency
     torch.manual_seed(42)
     np.random.seed(42)
+    random.seed(42)
     segmented_data = []
     for path in encoded_paths:
         num_steps = path.shape[0]
@@ -69,23 +72,59 @@ def create_universal_segmented_dataset(encoded_paths, min_window=20, max_window=
         #segmented_data.append(path)
 
         for _ in range(samples_per_path):
+            ### Original segmentation code
             # 1. Randomize the "Trip Duration" (Window Size) --> original line
             #win_size = np.random.randint(min_window, max_window)
 
-            # 1. Choose a "Tier" based on 30/50/20 distribution
+            # 1. Choose a "Tier" based on 30/35/35 distribution
             roll = random.random()
-            if roll < 0.35:  # SHORT (Precision)
-                win_size = random.randint(min_window, (num_steps//2)-100)
-            elif roll < 0.70:  # MEDIUM (Flow)
-                win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+            if roll < 0.30:  # SHORT (Precision)
+                #win_size = random.randint(min_window, (num_steps//2)-100)  #--> Toy
+                win_size = random.randint(min_window, (num_steps//2)-150)   #--> lasa
+            elif roll < 0.65:  # MEDIUM (Flow)
+                #win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+                win_size = random.randint(((num_steps//2)-150) + 1, (num_steps//2)+150)
             else:  # LONG (Global context)
-                win_size = random.randint(((num_steps//2)+100)+1, max_window)
+                #win_size = random.randint(((num_steps//2)+100)+1, max_window)
+                win_size = random.randint(((num_steps//2)+150)+1, max_window)
 
             # 2. Pick a random start point
             if num_steps <= win_size:
                 continue
             start = np.random.randint(0, num_steps - win_size)
             end = start + win_size
+
+            ### Debug segmentation code --- Try1
+            # roll = random.random()
+            # # 1. NEW: Long demos Anchoring (50% of samples)
+            # # Forces the network to learn how to flow entirely through the N shape.
+            # if roll < 0.50:
+            #     #start = random.randint(num_steps // 2, num_steps - min_window)
+            #     #end = num_steps
+            #     start = random.randint(0, min_window)
+            #     end = random.randint(num_steps - min_window, num_steps)
+            #
+            # # 2. SHORT (15% of samples)
+            # elif roll < 0.65:
+            #     win_size = random.randint(min_window, (num_steps//2)-100)
+            #     start = random.randint(0, num_steps - win_size)
+            #     end = start + win_size
+            #
+            # # 3. MEDIUM (15% of samples)
+            # elif roll < 0.80:
+            #     win_size = random.randint(((num_steps//2)-100) + 1, (num_steps//2)+100)
+            #     start = random.randint(0, num_steps - win_size)
+            #     end = start + win_size
+            #
+            # # 4. LONG (20% of samples)
+            # else:
+            #     win_size = random.randint(((num_steps//2)+100)+1, max_window)
+            #     start = random.randint(0, num_steps - win_size)
+            #     end = start + win_size
+
+            ### Debug segmentation code for N --- Try2 --> Debus still in progress
+            #start = random.randint(0, min_window)
+            #end = random.randint(num_steps - min_window, num_steps)
 
             # 3. Extract Segment
             z_segment = path[start:end, :].clone()
@@ -104,7 +143,7 @@ def unify_time_steps(latent_paths, time_steps=50):
     return unified_paths
 
 ### Dataset Pre-Processing
-## TOY EXAMPLE LOGIC
+## toy LOGIC
 #Get example demonstrations
 def get_demonstrations_paths(origin_dir, trajectory_number, test_id, s2_letter, r2_letter):
 
@@ -287,19 +326,39 @@ def normalize_newVAE(raw_trajectories):
 
     return norm_trajectories
 
-## LEROBOT LOGIC
+## lerobot LOGIC
 #Get lerobot-demonstrations (HuggingFace LeRobotDataset)
 def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    print("--> 1. Importing SciPy...")
     from scipy.spatial.transform import Rotation, Slerp
 
-    ds = LeRobotDataset(repo_id)
-    table = ds.hf_dataset
-    cols = table.with_format("numpy")[:]
-    cart = cols["observation.state.cartesian"]   # (N, 6): x,y,z,roll,pitch,yaw
-    t_all = cols["timestamp"]
-    ep_all = cols["episode_index"]
+    print(f"--> 2. Initializing dataset: {repo_id}...")
+    ds = LeRobotDataset(repo_id, revision="main")
 
+    print(f"--> 3. Accessing huggingface table...")
+    table = ds.hf_dataset
+    # print("--> 5. Converting to numpy...")
+    # cols = table.with_format("numpy")[:]
+    # print("--> 6. Success! Moving to math...")
+    # cart = cols["observation.state.cartesian"]  # (N, 6): x,y,z,roll,pitch,yaw
+    # t_all = cols["timestamp"]
+    # ep_all = cols["episode_index"]
+
+    print("--> 4. Selecting lightweight columns...")
+    # This ignores the video/image columns so torchvision doesn't crash!
+    lightweight_table = table.select_columns([
+        "observation.state.cartesian",
+        "timestamp",
+        "episode_index"
+    ])
+
+    print("--> 5. Bypassing HF formatter and converting to numpy...")
+    # FIX: Manually convert the columns to NumPy arrays to bypass bug
+    cart = np.array(lightweight_table["observation.state.cartesian"])  # (N, 6): x,y,z,roll,pitch,yaw
+    t_all = np.array(lightweight_table["timestamp"])
+    ep_all = np.array(lightweight_table["episode_index"])
+
+    print("--> 6. Success! Moving to math...")
     ep_ids = sorted(np.unique(ep_all).tolist())
 
     # --- STEP 1: Load and resample every episode to a fixed n_points ---
@@ -327,7 +386,7 @@ def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
     for pos, quat in zip(raw_trajectories, raw_quats):
         trajectory = pos
         trajectory_n = copy.deepcopy(trajectory)
-        trajectory = np.append(trajectory, quat, 1)      # --> Small horsefeet
+        trajectory = np.append(trajectory, quat, 1)  # --> Small horsefeet
         trajectory_n = np.append(trajectory_n, -quat, 1)  # --> Big horsefeet
 
         trajectories.append(trajectory)
@@ -335,12 +394,6 @@ def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
 
     print(f"Total # of Trajectories: {len(trajectories)}")
 
-    return trajectories
-
-## ROBOT EXPERIMENT LOGIC
-#Get Robot-demonstrations
-def get_demonstrations_paths_robotexp(model_task="Angle"):
-    trajectories = []
     return trajectories
 
 ### THE MASTER PREPROCESSOR
@@ -413,10 +466,15 @@ def build_dataset_offline(config, vae_model, device='cpu'):
         final_paths = unify_time_steps(segmented_paths, time_steps=config['dataset']['time_steps'])
         create_dataset(final_paths, save_dir)
     elif dataset_type == 'lerobot':
+        print("\n--- Preparing lerobot Datasets ---")
+        print(f"repo ---{config['dataset']['repo_id']}")
+        print(f"euler ---{config['dataset']['euler_order']}")
+        print(f"points ---{config['dataset']['n_points']}")
+
         real_paths = get_demonstrations_paths_lerobot(
             repo_id=config['dataset']['repo_id'],
             euler_order=config['dataset']['euler_order'],
-            n_points=config['dataset']['n_points'],
+            n_points=config['dataset']['n_points']  # the number of total demonstration files
         )
         latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
 
@@ -435,6 +493,9 @@ def build_dataset_offline(config, vae_model, device='cpu'):
         )
         final_paths = unify_time_steps(segmented_paths, time_steps=config['dataset']['time_steps'])
         create_dataset(final_paths, save_dir)
+
+    else:
+        raise ValueError(f"Unknown dataset for NODE training: '{dataset_type}'")
 
     return save_dir
 

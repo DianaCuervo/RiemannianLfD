@@ -367,15 +367,14 @@ def load_pretrained_vae(config, data_tensor, device='cpu'):
     batch_size = config['training_artifacts']['batch_size']
     pos_dof = config['architecture']['pos_dof']
     qua_dof = config['architecture']['qua_dof']
-    sigma_z = float(config['architecture']['sigma_z'])
-    sigma = float(config['architecture'].get('sigma', 1e-6))
+    sigma = float(config['architecture']['sigma'])
+    sigma_z = config['architecture']['sigma_z']
     beta_scale = config['architecture'].get('beta_scale', 1.0)
     model_path = config['training_artifacts']['model_path']
     cluster_path = config['training_artifacts']['cluster_path']
 
     # 2. Initialize the empty architecture
-    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof,
-              sigma=sigma, sigma_z=sigma_z).to(device)
+    vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof, sigma=sigma, sigma_z=sigma_z).to(device)
     vae.obstacle_input_space = None
 
     # 3. Build the RBF variance networks (their weights are overwritten in step 4)
