@@ -12,6 +12,7 @@ except ImportError:
     matplotlib.use('Agg', force=True)
     import matplotlib.pyplot as plt
 import os
+import random
 from vae.vae_model import get_M
 
 

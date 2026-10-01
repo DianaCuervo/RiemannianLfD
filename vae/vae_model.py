@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn
 import torch.distributions as td
@@ -81,7 +82,7 @@ class VAE(nn.Module):
 
         self.encoder_scale_fixed = nn.Parameter(torch.tensor([sigma_z]), requires_grad=False)
         self.decoder_scale_pos = nn.Parameter(torch.tensor(sigma), requires_grad=False)
-        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, 3)) *
+        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, self.qua_dof)) *
                                                            self.vmf_concentration_scale), requires_grad=False)
         self.dec_std_pos = lambda z: torch.ones(20, self.p, device=self.device)
         self.dec_std_qua = lambda z: torch.ones(20, self.p, device=self.device)
@@ -250,7 +251,7 @@ class VAE(nn.Module):
             _, z = self.encode(x, train_rbf=True)
         d = z.shape[1]
         inv_max_std = np.sqrt(1e-12)  # 1.0 / x.std()
-        beta = beta_scale / z.std(dim=0).mean()
+        beta = beta_scale / z.std(dim=0).mean()  # same formula as compute_rbf_beta
         rbf_beta = beta * torch.ones(1, self.num_clusters, device=z.device)
 
         if load_clusters:
@@ -272,6 +273,42 @@ class VAE(nn.Module):
         self.dec_std_qua.to(self.device)
         cluster_centers = k_means.cluster_centers_
         return cluster_centers
+
+    def compute_rbf_beta(self, x, beta_scale=1.0):
+        """ Recompute the RBF bandwidth init_std set during training: beta_scale over the
+        mean per-axis std of the latent codes of x. Only meaningful once the encoder is trained.
+
+        During training init_std runs right after train(), so encoder_loc's BatchNorm layers
+        are in train mode and normalise with x's own batch statistics; this does the same.
+        Such a forward pass also updates their running statistics, which inference relies
+        on, so those (and the layers' modes) are restored afterwards.
+        Inputs:
+            x: the VAE training points
+            beta_scale: config multiplier (architecture.beta_scale)
+        Outputs:
+            beta: 0-dim tensor
+        """
+        saved_state = copy.deepcopy(self.encoder_loc.state_dict())
+        saved_modes = [m.training for m in self.encoder_loc.modules()]
+        try:
+            self.encoder_loc.train()
+            with torch.no_grad():
+                z = self.encoder_loc(x)
+        finally:
+            self.encoder_loc.load_state_dict(saved_state)
+            for module, mode in zip(self.encoder_loc.modules(), saved_modes):
+                module.training = mode
+        return beta_scale / z.std(dim=0).mean()
+
+    def set_rbf_beta(self, beta):
+        """ Overwrite the bandwidth of both RBF layers (dec_std_pos[0], dec_std_qua[0]).
+
+        nnj.RBF keeps beta as a plain attribute, not a parameter or buffer, so it is not in
+        the checkpoint and load_state_dict cannot restore it.
+        """
+        rbf_beta = float(beta) * torch.ones(1, self.num_clusters, device=self.device)
+        self.dec_std_pos[0].beta = rbf_beta
+        self.dec_std_qua[0].beta = rbf_beta
 
     def fit_std(self, data_loader, num_epochs, model, n_samples=1, learning_rate=1e-4):
         """ Training the standard deviation models including 2 RBF networks for Cartesian and quaternion decoders
@@ -315,10 +352,15 @@ def get_M(model, data):
     return e, J, M
 
 # Load the pretrained VAE
-def load_pretrained_vae(config, dummy_tensor, device='cpu'):
+def load_pretrained_vae(config, data_tensor, device='cpu'):
     """
-    Instantiates the VAE, builds empty layers using a dummy tensor,
-    and loads the real pre-trained weights.
+    Instantiates the VAE, builds its layers, and loads the real pre-trained weights.
+
+    data_tensor must be the VAE's real training points (see
+    vae.vae_train.load_vae_training_points), not random noise: unless the checkpoint stores
+    'rbf_beta', the RBF bandwidth is recomputed from it with the trained encoder, exactly
+    as training did. nnj.RBF keeps beta outside the state dict, so load_state_dict alone
+    would leave whatever init_std computed from the still-untrained encoder.
     """
     # 1. Read directly from the config dictionary
     layers = config['architecture']['layers']
@@ -336,14 +378,24 @@ def load_pretrained_vae(config, dummy_tensor, device='cpu'):
               sigma=sigma, sigma_z=sigma_z).to(device)
     vae.obstacle_input_space = None
 
-    # 3. Initialize clusters (Using random noise just to build the graph dimensions!)
-    vae.init_std(dummy_tensor.to(device), load_clusters=True, cluster_path=cluster_path, beta_scale=beta_scale)
+    # 3. Build the RBF variance networks (their weights are overwritten in step 4)
+    data_tensor = data_tensor.float().to(device)
+    vae.init_std(data_tensor, load_clusters=True, cluster_path=cluster_path, beta_scale=beta_scale)
 
     # 4. OVERWRITE the fake initialization with your real, trained weights
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     vae.load_state_dict(checkpoint['model_state_dict'])
 
-    # 5. Freeze for inference
+    # 5. Restore the RBF bandwidth, which is not part of the state dict
+    if 'rbf_beta' in checkpoint:
+        rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
+    else:
+        rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
+        source = f"recomputed from {data_tensor.shape[0]} training points"
+    vae.set_rbf_beta(rbf_beta)
+    print(f"RBF beta = {rbf_beta:.4f} ({source})")
+
+    # 6. Freeze for inference
     vae.disable_training()
     vae.eval()
 

@@ -10,7 +10,8 @@ from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
 from vae.vae_model import VAE, load_pretrained_vae
-from vae.vae_train import train_vae
+from vae.vae_train import train_vae, load_vae_training_points
+from vae.vae_test_with_graph import test_vae_with_graph
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
@@ -52,7 +53,7 @@ def main():
     ## Load of the configuration file according to the specific dataset/experiment
     # Catch the Command Line Arguments
     parser = argparse.ArgumentParser(description="Run RiemannianLfD")
-    parser.add_argument('--mode', type=str, required=True, choices=['train', 'test', 'train_vae'], help="Which mode to use")
+    parser.add_argument('--mode', type=str, required=True, choices=['train', 'test', 'train_vae', 'test_vae_with_graph'], help="Which mode to use")
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None',
                          help="Specific shape for LASA (e.g., N, Angle) or dataset variant for lerobot (pick, place)")
@@ -98,12 +99,15 @@ def main():
         train_vae(vae_cfg, node_cfg['dataset'], device=device)
         return
 
+    elif args.mode == 'test_vae_with_graph':
+        return
+
     ### INITIALIZATION
     print("\n--- Initializing Models ---")
     # Pass the VAE config
     total_dof = vae_cfg['architecture']['pos_dof'] + vae_cfg['architecture']['qua_dof']
-    dummy_data = torch.randn(100, total_dof)
-    vae = load_pretrained_vae(vae_cfg, dummy_data)
+    # Real training points, not noise: the RBF beta is recomputed from them (see load_pretrained_vae)
+    vae = load_pretrained_vae(vae_cfg, load_vae_training_points(node_cfg['dataset']))
     print(f"VAE Model initialized with DOF={total_dof}")
 
     ### Visualization of Manifold
@@ -205,6 +209,10 @@ def main():
         # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
         # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
         # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
+    elif args.mode == 'test_vae_with_graph':
+        space_title = args.dataset.upper() + ('' if args.shape == 'None' else ' ' + dataset_shape)
+        test_vae_with_graph(vae, test_loader, space_name=space_title,
+                            latent_frame=vae_cfg['visualization']['latent_frame'])
     elif args.mode == 'benchmark':
         print("\nTo Be Completed!")
 

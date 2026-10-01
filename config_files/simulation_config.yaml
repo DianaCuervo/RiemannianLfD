@@ -33,6 +33,33 @@ frameworks:
     graph_size: 100             # nodes per latent axis
     lasa:
       latent_frame: 15          # grid spans [-latent_frame, +latent_frame]
+  # Energy minimisation over a CubicSpline, as benchmark/eval_stochman.py does via
+  # Manifold.connecting_geodesic. lr/thresh are taken from RiemannianLfD-benchmark's
+  # stochman/geodesic.py (the local stochman copy hardcodes lr=1e-1, thresh=1e-4), so the
+  # loop is re-implemented in simulation_benchmark.py rather than calling the local one.
+  stochman:
+    num_nodes: 5                # CubicSpline default, as used by eval_stochman.py
+    lr: 1.0e-3
+    thresh: 1.0e-3              # converged once max |grad| of the spline params drops below
+    max_iter: 150
+    eval_grid: 20               # points along the curve where energy is evaluated
+  node:
+    lasa:
+      model_dir: './models/node/lasa'
+      model_name: 'NODE_lasa_{shape}-Shape_RiemannianMSE_EGI.pth'
+      # Architecture per shape, matching RiemannianLfD-benchmark's benchmark_config.yaml.
+      N:
+        latent_dim: 2
+        hidden_dim: 512
+      Angle:
+        latent_dim: 2
+        hidden_dim: 256
+      P:
+        latent_dim: 2
+        hidden_dim: 512
+      Leaf_1:
+        latent_dim: 2
+        hidden_dim: 512
 
 datasets:
   lasa:

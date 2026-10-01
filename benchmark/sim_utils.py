@@ -1,7 +1,8 @@
 """MuJoCo replay helpers for simulation_benchmark.py.
 
 Ports the Panda IK/replay code from GeodesicMotionSkills' toy_example.py and adds the
-small runtime adapter that lets our plain-nn.Module VAE drive DiscretizedManifold.
+small runtime adapter that lets our plain-nn.Module VAE drive DiscretizedManifold and
+stochman's energy minimisation.
 """
 import types
 from pathlib import Path
@@ -18,16 +19,19 @@ from GeodesicMotionSkills.Experiments.Utils.environment import Environment
 # ==========================================
 # VAE ADAPTER
 # ==========================================
-def as_graph_manifold(vae):
-    """Attach the three attributes DiscretizedManifold expects, without touching vae_model.py.
+def as_embedded_manifold(vae):
+    """Attach the Manifold attributes the planners expect, without touching vae_model.py.
 
     vae_model.py's VAE subclasses plain nn.Module, so it has embed() but none of the
-    Manifold interface built on top of it. Rather than change that class, we bind what
-    the graph planner actually reads onto the instance -- the same trick
-    load_pretrained_vae already uses when it sets vae.obstacle_input_space from outside.
+    Manifold interface built on top of it (RiemannianLfD-benchmark's copy instead inherits
+    EmbeddedManifold). Rather than change that class, we bind what the graph and stochman
+    planners actually read onto the instance -- the same trick load_pretrained_vae already
+    uses when it sets vae.obstacle_input_space from outside.
 
         curve_length  weights every edge of the graph (discretized_manifold.py:77-98).
                       EmbeddedManifold's implementation only calls self.embed().
+        curve_energy  the objective stochman's geodesic energy minimisation backpropagates
+                      through; likewise only calls self.embed().
         env           read for obstacles/via-points (discretized_manifold.py:186-187).
         time_step     passed straight through as `graph_id`, which is only used by a
                       commented-out draw_graph() call -- carried so our call site reads
@@ -35,6 +39,8 @@ def as_graph_manifold(vae):
     """
     if not hasattr(vae, "curve_length"):
         vae.curve_length = types.MethodType(EmbeddedManifold.curve_length, vae)
+    if not hasattr(vae, "curve_energy"):
+        vae.curve_energy = types.MethodType(EmbeddedManifold.curve_energy, vae)
     if not hasattr(vae, "env"):
         vae.env = Environment()
     if not hasattr(vae, "time_step"):

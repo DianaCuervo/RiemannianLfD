@@ -86,6 +86,41 @@ def build_point_dataset(trajectories, batch_size, test_size=0.3):
     return train_loader, test_loader, train_tensor
 
 
+def load_vae_trajectories(dataset_cfg):
+    """Load the raw demonstrations (each [T, dof]) the VAE is trained on."""
+    dataset_type = dataset_cfg.get('type', 'toy')
+    if dataset_type == 'toy':
+        return get_demonstrations_paths(
+            origin_dir=dataset_cfg['origin_dir'],
+            trajectory_number=dataset_cfg['trajectory_number'],
+            test_id=dataset_cfg['test_id'],
+            s2_letter=dataset_cfg['s2_letter'],
+            r2_letter=dataset_cfg['r2_letter'],
+        )
+    elif dataset_type == 'lasa':
+        return get_demonstrations_paths_newVAE(
+            origin_dir=dataset_cfg['origin_dir'],
+            origin_file=dataset_cfg['origin_file'],
+            trajectory_number=dataset_cfg['trajectory_number'],
+        )
+    elif dataset_type == 'lerobot':
+        return get_demonstrations_paths_lerobot(
+            repo_id=dataset_cfg['repo_id'],
+            euler_order=dataset_cfg['euler_order'],
+            n_points=dataset_cfg['n_points'],
+        )
+    raise ValueError(f"Unknown dataset type for VAE training: '{dataset_type}'")
+
+
+def load_vae_training_points(dataset_cfg):
+    """All VAE training points as one [N, dof] tensor, for load_pretrained_vae.
+
+    Training computed the RBF beta on a random 70% split of these points
+    (build_point_dataset); using all of them changes the latent std by well under 1%.
+    """
+    return torch.from_numpy(np.vstack(load_vae_trajectories(dataset_cfg))).float()
+
+
 def train_vae(vae_cfg, dataset_cfg, device='cpu'):
     """
     Config-driven replacement for toy_example.py's train_model(): trains a single VAE
@@ -102,29 +137,7 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu'):
     batch_size = artifacts['batch_size']
 
     print("\n--- Loading raw demonstrations for VAE training ---")
-    dataset_type = dataset_cfg.get('type', 'toy')
-    if dataset_type == 'toy':
-        trajectories = get_demonstrations_paths(
-            origin_dir=dataset_cfg['origin_dir'],
-            trajectory_number=dataset_cfg['trajectory_number'],
-            test_id=dataset_cfg['test_id'],
-            s2_letter=dataset_cfg['s2_letter'],
-            r2_letter=dataset_cfg['r2_letter'],
-        )
-    elif dataset_type == 'lasa':
-        trajectories = get_demonstrations_paths_newVAE(
-            origin_dir=dataset_cfg['origin_dir'],
-            origin_file=dataset_cfg['origin_file'],
-            trajectory_number=dataset_cfg['trajectory_number'],
-        )
-    elif dataset_type == 'lerobot':
-        trajectories = get_demonstrations_paths_lerobot(
-            repo_id=dataset_cfg['repo_id'],
-            euler_order=dataset_cfg['euler_order'],
-            n_points=dataset_cfg['n_points'],
-        )
-    else:
-        raise ValueError(f"Unknown dataset type for VAE training: '{dataset_type}'")
+    trajectories = load_vae_trajectories(dataset_cfg)
 
     train_loader, test_loader, train_tensor = build_point_dataset(trajectories, batch_size=batch_size)
 
@@ -173,6 +186,8 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu'):
         'model_state_dict': model.to('cpu').state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'encoder_scale': arch['sigma_z'],
+        # nnj.RBF keeps beta outside the state dict; load_pretrained_vae restores it from here
+        'rbf_beta': float(model.dec_std_qua[0].beta.flatten()[0]),
     }, model_path)
 
     return model
