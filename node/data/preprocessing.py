@@ -333,7 +333,7 @@ def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
     from scipy.spatial.transform import Rotation, Slerp
 
     print(f"--> 2. Initializing dataset: {repo_id}...")
-    ds = LeRobotDataset(repo_id)
+    ds = LeRobotDataset(repo_id, revision="main")
 
     print(f"--> 3. Accessing huggingface table...")
     table = ds.hf_dataset
