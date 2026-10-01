@@ -2,15 +2,10 @@ import os
 
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
-from node.data.preprocessing import (
-    get_demonstrations_paths,
-    get_demonstrations_paths_newVAE,
-    get_demonstrations_paths_lerobot,
-)
+from vae.data.vae_dataset import load_vae_trajectories, build_point_dataset
+from vae.utils.plots import plot_vae_training_curves
 from vae.vae_model import VAE
 
 
@@ -53,8 +48,9 @@ def loss_function_elbo(x, model, train_rbf, n_samples):
 
 
 def train(model, optimizer, loss_function, data_loader, epoch, epochs, device, train_rbf):
-    """One training epoch, ported from toy_example.py::train."""
+    """One training epoch, ported from toy_example.py::train. Returns the mean batch loss."""
     model.train()
+    total_loss, num_batches = 0.0, 0
     for batch_idx, (data,) in enumerate(data_loader):
         data = data.to(device)
         # prevent crashing when the leftover training data is not enough for an epoch
@@ -64,64 +60,29 @@ def train(model, optimizer, loss_function, data_loader, epoch, epochs, device, t
         batch_loss, loss_kl, loss_log = loss_function(data, train_rbf)
         batch_loss.backward()
         optimizer.step()
+        total_loss += batch_loss.item()
+        num_batches += 1
+    return total_loss / num_batches if num_batches else float('nan')
 
 
-def build_point_dataset(trajectories, batch_size, test_size=0.3):
+def evaluate_elbo(model, data_loader, device, n_samples=1):
+    """Mean negative ELBO of the fully trained model (RBF variances included) over a loader.
+
+    The evaluation counterpart of toy_example.py::validate_std.
     """
-    Flattens a list of raw demo trajectories (each [T, dof]) into a single point-cloud
-    dataset, matching the flatten+TensorDataset+train_test_split done inline in
-    toy_example.py's __main__ block.
-
-    Note: sklearn's train_test_split on a TensorDataset returns a plain list of
-    (tensor,)-tuples, not a TensorDataset, so we also hand back the raw stacked
-    training tensor for callers (e.g. init_std) that need a batch tensor directly.
-    """
-    input_data = np.vstack(trajectories)
-    dataset = TensorDataset(torch.from_numpy(input_data).float())
-    train_data, test_data = train_test_split(dataset, test_size=test_size)
-
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-    train_tensor = torch.stack([item[0] for item in train_data])
-    return train_loader, test_loader, train_tensor
+    was_training = model.training
+    model.eval()
+    total_loss = 0.0
+    with torch.no_grad():
+        for data, in data_loader:
+            loss, _, _ = loss_function_elbo(data.to(device), model, train_rbf=True, n_samples=n_samples)
+            total_loss += loss.item()
+    model.train(was_training)
+    return total_loss / max(len(data_loader), 1)
 
 
-def load_vae_trajectories(dataset_cfg):
-    """Load the raw demonstrations (each [T, dof]) the VAE is trained on."""
-    dataset_type = dataset_cfg.get('type', 'toy')
-    if dataset_type == 'toy':
-        return get_demonstrations_paths(
-            origin_dir=dataset_cfg['origin_dir'],
-            trajectory_number=dataset_cfg['trajectory_number'],
-            test_id=dataset_cfg['test_id'],
-            s2_letter=dataset_cfg['s2_letter'],
-            r2_letter=dataset_cfg['r2_letter'],
-        )
-    elif dataset_type == 'lasa':
-        return get_demonstrations_paths_newVAE(
-            origin_dir=dataset_cfg['origin_dir'],
-            origin_file=dataset_cfg['origin_file'],
-            trajectory_number=dataset_cfg['trajectory_number'],
-        )
-    elif dataset_type == 'lerobot':
-        return get_demonstrations_paths_lerobot(
-            repo_id=dataset_cfg['repo_id'],
-            euler_order=dataset_cfg['euler_order'],
-            n_points=dataset_cfg['n_points'],
-        )
-    raise ValueError(f"Unknown dataset type for VAE training: '{dataset_type}'")
-
-
-def load_vae_training_points(dataset_cfg):
-    """All VAE training points as one [N, dof] tensor, for load_pretrained_vae.
-
-    Training computed the RBF beta on a random 70% split of these points
-    (build_point_dataset); using all of them changes the latent std by well under 1%.
-    """
-    return torch.from_numpy(np.vstack(load_vae_trajectories(dataset_cfg))).float()
-
-
-def train_vae(vae_cfg, dataset_cfg, device='cpu'):
+def train_vae(vae_cfg, dataset_cfg, device='cpu', seed=None, val_ratio=0.3, overwrite=False,
+              curves_dir=None):
     """
     Config-driven replacement for toy_example.py's train_model(): trains a single VAE
     (no encoder_scale sweep, no repetitions loop) in the same 3 stages as the original.
@@ -130,16 +91,25 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu'):
     artifacts = vae_cfg['training_artifacts']
     training = vae_cfg.get('training', {})
 
-    epochs = training.get('epochs', 1000)
-    epochs_rbf = training.get('epochs_rbf', 1000)
-    learning_rate = training.get('learning_rate', 1e-3)
-    n_samples = training.get('n_samples', 1)
+    epochs = int(training.get('epochs', 1000))
+    epochs_rbf = int(training.get('epochs_rbf', 1000))
+    learning_rate = float(training.get('learning_rate', 1e-3))
+    learning_rate_rbf = float(training.get('learning_rate_rbf', 1e-4))
+    n_samples = int(training.get('n_samples', 1))
     batch_size = artifacts['batch_size']
+
+    # The shipped checkpoints are tracked in git; check before spending hours training
+    model_path = artifacts['model_path']
+    if os.path.exists(model_path) and not overwrite:
+        raise FileExistsError(f"{model_path} already exists. Pass --overwrite to replace it, "
+                              f"or --artifacts_dir to train into another folder.")
 
     print("\n--- Loading raw demonstrations for VAE training ---")
     trajectories = load_vae_trajectories(dataset_cfg)
 
-    train_loader, test_loader, train_tensor = build_point_dataset(trajectories, batch_size=batch_size)
+    train_loader, val_loader, train_tensor = build_point_dataset(
+        trajectories, batch_size=batch_size, test_size=val_ratio, seed=seed)
+    print(f"VAE dataset | Train: {train_tensor.shape[0]} points | Val: {len(val_loader.dataset)} points")
 
     model = VAE(
         layers=arch['layers'],
@@ -150,37 +120,49 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu'):
         sigma_z=float(arch['sigma_z']),
     ).to(device)
 
+    history = {"stage1_kl": [], "stage2_reconstruction": []}
+
     # --- Stage 1: regularization-focused training (KL active) ---
     model.activate_KL = True
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     loss_function = lambda data, train_rbf: loss_function_elbo(data, model, train_rbf, n_samples=n_samples)
-    for epoch in tqdm(range(int(epochs)), desc="Stage 1/3: KL regularization"):
-        train(model, optimizer, loss_function, train_loader, epoch, epochs, device, train_rbf=False)
+    for epoch in tqdm(range(epochs), desc="Stage 1/3: KL regularization"):
+        history["stage1_kl"].append(
+            train(model, optimizer, loss_function, train_loader, epoch, epochs, device, train_rbf=False))
 
     # --- Stage 2: reconstruction-focused training (decoder only) ---
     model.activate_KL = False
     model.kl_coeff = 0.1
     params = list(model.decoder_loc.parameters())
     optimizer = torch.optim.Adam(params, lr=learning_rate)
-    for epoch in tqdm(range(int(epochs)), desc="Stage 2/3: reconstruction"):
+    for epoch in tqdm(range(epochs), desc="Stage 2/3: reconstruction"):
         if epoch == int(epochs / 2):
             model.empowered_quaternions = True
-        train(model, optimizer, loss_function, train_loader, epoch, epochs, device, train_rbf=False)
+        history["stage2_reconstruction"].append(
+            train(model, optimizer, loss_function, train_loader, epoch, epochs, device, train_rbf=False))
     model.empowered_quaternions = False
 
     # --- Stage 3: train RBF/variance networks ---
+    # KMeans inside init_std draws from numpy's global RNG, which the caller seeds
+    os.makedirs(os.path.dirname(artifacts['cluster_path']) or '.', exist_ok=True)
     model.init_std(
         train_tensor.to(device),
         load_clusters=False,
         cluster_path=artifacts['cluster_path'],
         beta_scale=arch.get('beta_scale', 1.0),
     )
-    model.fit_std(train_loader, epochs_rbf, model, n_samples=n_samples)
+    # fit_std takes one optimizer step per epoch, on gradients accumulated over every
+    # batch (as toy_example.py did), so it is effectively full-batch gradient descent
+    model.fit_std(train_loader, epochs_rbf, model, n_samples=n_samples, learning_rate=learning_rate_rbf)
+
+    history["final_train_elbo_loss"] = evaluate_elbo(model, train_loader, device, n_samples)
+    history["final_val_elbo_loss"] = evaluate_elbo(model, val_loader, device, n_samples)
+    print(f"Final -ELBO | Train: {history['final_train_elbo_loss']:.4e} | "
+          f"Val: {history['final_val_elbo_loss']:.4e}")
 
     # --- Save the trained model ---
-    model_path = artifacts['model_path']
     print(f"Saving VAE model: {model_path}")
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(os.path.dirname(model_path) or '.', exist_ok=True)
     torch.save({
         'epoch': epochs,
         'model_state_dict': model.to('cpu').state_dict(),
@@ -188,6 +170,12 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu'):
         'encoder_scale': arch['sigma_z'],
         # nnj.RBF keeps beta outside the state dict; load_pretrained_vae restores it from here
         'rbf_beta': float(model.dec_std_qua[0].beta.flatten()[0]),
+        'history': history,
+        'seed': seed,
     }, model_path)
 
-    return model
+    if curves_dir:
+        name = os.path.splitext(os.path.basename(model_path))[0]
+        plot_vae_training_curves(history, save_dir=curves_dir, filename=f"{name}_Training-Curves.svg")
+
+    return model, history

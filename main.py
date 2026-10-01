@@ -10,9 +10,8 @@ import json
 from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
-from vae.vae_model import VAE, load_pretrained_vae
-from vae.vae_train import train_vae, load_vae_training_points
-from vae.vae_test_with_graph import test_vae_with_graph
+from vae.vae_model import load_pretrained_vae
+from vae.data.vae_dataset import load_vae_training_points
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
@@ -117,15 +116,6 @@ def main():
     # Log Initialization
     logs_dir = node_cfg['dataset'].get('model_train_logs', './node/training/training_logs')
     sys.stdout.set_log_file(save_dir=logs_dir, model_name=model_name)
-
-    if args.mode == 'train_vae':
-        print("\n--- Training VAE (toy_example.py-equivalent 3-stage pipeline) ---")
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        train_vae(vae_cfg, node_cfg['dataset'], device=device)
-        return
-
-    elif args.mode == 'test_vae_with_graph':
-        return
 
     ### INITIALIZATION
     print("\n--- Initializing Models ---")

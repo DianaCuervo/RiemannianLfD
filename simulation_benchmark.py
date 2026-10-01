@@ -29,7 +29,7 @@ from GeodesicMotionSkills.Experiments.Utils import discretized_manifold
 from node.node_model import GoalConditionedNODE
 from stochman.curves import CubicSpline
 from vae.vae_model import load_pretrained_vae
-from vae.vae_train import load_vae_training_points
+from vae.data.vae_dataset import load_vae_training_points
 
 
 class NumpyEncoder(json.JSONEncoder):

@@ -319,7 +319,7 @@ class VAE(nn.Module):
         Outputs:
 
         """
-        from vae.vae_train import loss_function_elbo  # deferred to avoid a circular import
+        from vae.training.vae_train import loss_function_elbo  # deferred to avoid a circular import
         params = list(self.encoder_scale.parameters()) + list(self.dec_std_qua.parameters()) + list(
             self.dec_std_pos.parameters())
         optimizer = torch.optim.Adam(params, lr=learning_rate)
@@ -357,7 +357,7 @@ def load_pretrained_vae(config, data_tensor, device='cpu'):
     Instantiates the VAE, builds its layers, and loads the real pre-trained weights.
 
     data_tensor must be the VAE's real training points (see
-    vae.vae_train.load_vae_training_points), not random noise: unless the checkpoint stores
+    vae.data.vae_dataset.load_vae_training_points), not random noise: unless the checkpoint stores
     'rbf_beta', the RBF bandwidth is recomputed from it with the trained encoder, exactly
     as training did. nnj.RBF keeps beta outside the state dict, so load_state_dict alone
     would leave whatever init_std computed from the still-untrained encoder.
@@ -386,13 +386,13 @@ def load_pretrained_vae(config, data_tensor, device='cpu'):
     vae.load_state_dict(checkpoint['model_state_dict'])
 
     # 5. Restore the RBF bandwidth, which is not part of the state dict
-    if 'rbf_beta' in checkpoint:
-        rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
-    else:
-        rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
-        source = f"recomputed from {data_tensor.shape[0]} training points"
-    vae.set_rbf_beta(rbf_beta)
-    print(f"RBF beta = {rbf_beta:.4f} ({source})")
+    # if 'rbf_beta' in checkpoint:
+    #     rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
+    # else:
+    #     rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
+    #     source = f"recomputed from {data_tensor.shape[0]} training points"
+    # vae.set_rbf_beta(rbf_beta)
+    # print(f"RBF beta = {rbf_beta:.4f} ({source})")
 
     # 6. Freeze for inference
     vae.disable_training()
