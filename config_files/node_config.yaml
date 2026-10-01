@@ -258,7 +258,7 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 10 #3000
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -308,7 +308,7 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 10 #3000
+      epochs: 3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
