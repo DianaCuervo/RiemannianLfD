@@ -30,7 +30,8 @@ SQLAlchemy
 optuna-dashboard
 
 # --- Robotics & Datasets ---
-lerobot
+lerobot>=0.6.1
+av<17.0.0
 
 # --- Local Sub-packages ---
 -e ./s-vae-pytorch
