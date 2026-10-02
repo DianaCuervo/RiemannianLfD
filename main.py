@@ -78,10 +78,11 @@ def main():
     if args.dataset == 'lasa':
         dataset_shape = args.shape + '-Shape'
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
     elif args.dataset == 'lerobot':
         dataset_task = args.task
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task)
-
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{task}', dataset_task)
     print(f"Loading VAE from: {vae_cfg['training_artifacts']['model_path']}")
 
     # Load node_config
