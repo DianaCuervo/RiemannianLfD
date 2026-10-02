@@ -164,7 +164,10 @@ def train_vae(vae_cfg, dataset_cfg, device='cpu', seed=None, val_ratio=0.3, over
     print(f"Saving VAE model: {model_path}")
     os.makedirs(os.path.dirname(model_path) or '.', exist_ok=True)
     torch.save({
+        'epoch': epochs,
+        'epoch_rbf': epochs_rbf,
         'model_state_dict': model.to('cpu').state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
         # nnj.RBF keeps beta outside the state dict; load_pretrained_vae restores it from here
         'rbf_beta': float(model.dec_std_qua[0].beta.flatten()[0]),
         'beta_scale': float(arch.get('beta_scale', 1.0)),
