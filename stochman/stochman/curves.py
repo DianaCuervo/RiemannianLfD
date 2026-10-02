@@ -363,7 +363,7 @@ class CubicSpline(BasicCurve):
         B, num_edges, degree, D = coeffs.shape
         idx = torch.floor(t * num_edges).clamp(min=0, max=num_edges - 1).long()  # Bx|t|
         power = (
-            torch.arange(0.0, degree, dtype=t.dtype, device=self.device).view(1, 1, -1).expand(B, -1, -1)
+            torch.arange(0.0, degree, dtype=t.dtype, device=coeffs.device).view(1, 1, -1).expand(B, -1, -1)
         )  # Bx1x(degree)
         tpow = t.view(B, -1, 1).pow(power)  # Bx|t|x(degree)
         coeffs_idx = torch.cat([coeffs[k, idx[k]].unsqueeze(0) for k in range(B)])  # Bx|t|x(degree)xD
@@ -378,6 +378,7 @@ class CubicSpline(BasicCurve):
 
     def forward(self, t: torch.Tensor) -> torch.Tensor:
         coeffs = self._get_coeffs()  # Bx(num_edges)x4xD
+        t = t.to(coeffs.device)
         no_batch = t.ndim == 1
         if no_batch:
             t = t.expand(coeffs.shape[0], -1)  # Bx|t|

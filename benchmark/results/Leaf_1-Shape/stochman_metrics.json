@@ -1,0 +1,26 @@
+{
+    "framework": "Stochman",
+    "dataset": "lasa",
+    "shape": "Leaf_1",
+    "inference_time_seconds": 5427.875214576721,
+    "riemannian_metrics": {
+        "MSE_Error": 18.426266612723214,
+        "Radial_Error": 1.490200851606005e-08,
+        "Max_Radial": 1.6858739115832577e-07,
+        "Violation_Rate": 0.0,
+        "Avg_Energy_Pred": 0.0,
+        "Avg_Energy_GT": 0.0,
+        "MSE_Mean": 18.426266612723214,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 1.490200851606005e-08,
+        "Radial_Std": 3.507100743149749e-08,
+        "Violation_Mean": 0.0,
+        "Violation_Std": 0.0
+    },
+    "euclidean_metrics": {
+        "Imitation_Pos_MSE": 0.22522839903831482,
+        "Imitation_Ori_MSE": 0.1721324622631073,
+        "Goal_Pos_MSE": 2.0511295893989968e-16,
+        "Goal_Ori_MSE": 4.477310721995309e-05
+    }
+}

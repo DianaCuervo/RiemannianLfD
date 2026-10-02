@@ -5,12 +5,14 @@ import torch.distributions as td
 import numpy as np
 import pickle
 from stochman import nnj
+from stochman.manifold import EmbeddedManifold
 import hyperspherical_vae.distributions.von_mises_fisher as vmf
 from sklearn.cluster import KMeans
+from GeodesicMotionSkills.Experiments.Utils.environment import Environment
 from tqdm import tqdm
 
 ###Create VAE Class --> To reconsider as it migth not be needed
-class VAE(nn.Module):
+class VAE(nn.Module, EmbeddedManifold):
     # (Note: I removed EmbeddedManifold inheritance here assuming you just need standard nn.Module,
     # but keep it if StochMan strictly requires it)
 
@@ -28,6 +30,7 @@ class VAE(nn.Module):
                 sigma_z:    the scale parameter of the distribution given as the output of the VAE's encoder
         """
         super(VAE, self).__init__()
+        self.env = Environment()
 
         #architecture
         self.p = int(layers[0])  # Dimension of x
@@ -48,6 +51,8 @@ class VAE(nn.Module):
         self.kl_coeff_max = 1.0
         self.activate_KL = False  # if enabled, KL is considered in the ELBO calculation
         self.empowered_quaternions = False  # when True, scales the quaternion log-likelihood in the Loss
+
+        self.time_step = 0
 
         #  Initialize VAE
         enc = []
@@ -90,6 +95,23 @@ class VAE(nn.Module):
         self.prior_loc = nn.Parameter(torch.zeros(self.d), requires_grad=False)
         self.prior_scale = nn.Parameter(torch.ones(self.d), requires_grad=False)
         self.prior = td.Independent(td.Normal(loc=self.prior_loc, scale=self.prior_scale), 1)
+
+    def to(self, *args, **kwargs):
+        module = super().to(*args, **kwargs)
+        device, _, _, _ = torch._C._nn._parse_to(*args, **kwargs)
+        if device is not None:
+            module.device = device
+        return module
+
+    def cuda(self, device=None):
+        module = super().cuda(device)
+        module.device = next(module.parameters()).device
+        return module
+
+    def cpu(self):
+        module = super().cpu()
+        module.device = torch.device('cpu')
+        return module
 
     def embed(self, points, jacobian=False):
         """

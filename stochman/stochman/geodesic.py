@@ -77,7 +77,7 @@ def geodesic_minimizing_energy(curve, manifold, optimizer=torch.optim.Adam, max_
     # Initialize optimizer and set up closure
 
     alpha = torch.linspace(0, 1, eval_grid, dtype=curve.begin.dtype, device=curve.device)
-    opt = optimizer(curve.parameters(), lr=1e-1)
+    opt = optimizer(curve.parameters(), lr=1e-3)
 
     def closure():
         opt.zero_grad()
@@ -85,7 +85,7 @@ def geodesic_minimizing_energy(curve, manifold, optimizer=torch.optim.Adam, max_
         loss.backward()
         return loss
 
-    thresh = 1e-4
+    thresh = 1e-3
 
     for k in range(max_iter):
         opt.step(closure=closure)
