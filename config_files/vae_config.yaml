@@ -10,7 +10,8 @@ toy:
   training_artifacts:
     batch_size: 128
     model_path: './models/vae/toy_example/VAE_toy.pt'
-    cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    cluster_path: './datasets/Clusters/toy_example/clusters_toy.p'
   training:
     epochs: 1000       # Stage 1 (KL) and Stage 2 (reconstruction) epochs
     epochs_rbf: 1000    # Stage 3 (RBF variance networks) epochs
@@ -30,7 +31,8 @@ lasa:
   training_artifacts:
     batch_size: 128
     model_path: './models/vae/lasa/VAE_{shape}.pt'
-    cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+    cluster_path: './datasets/Clusters/clusters_{shape}.p'
   visualization:
     latent_frame: 15
 
@@ -46,7 +48,8 @@ lerobot:
     training_artifacts:
       batch_size: 128
       model_path: './models/vae/lerobot/VAE_{task}.pt'
-      cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+      # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+      cluster_path: './datasets/Clusters/clusters_{task}.p'
     visualization:
       latent_frame: 15
   place:
@@ -60,6 +63,7 @@ lerobot:
     training_artifacts:
       batch_size: 128
       model_path: './models/vae/lerobot/VAE_{task}.pt'
-      cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+      # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+      cluster_path: './datasets/Clusters/clusters_{task}.p'
     visualization:
       latent_frame: 15

@@ -421,13 +421,13 @@ def load_pretrained_vae(config, data_tensor, device='cpu'):
     vae.load_state_dict(checkpoint['model_state_dict'])
 
     # 5. Restore the RBF bandwidth, which is not part of the state dict
-    # if 'rbf_beta' in checkpoint:
-    #     rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
-    # else:
-    #     rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
-    #     source = f"recomputed from {data_tensor.shape[0]} training points"
-    # vae.set_rbf_beta(rbf_beta)
-    # print(f"RBF beta = {rbf_beta:.4f} ({source})")
+    if 'rbf_beta' in checkpoint:
+        rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
+    else:
+        rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
+        source = f"recomputed from {data_tensor.shape[0]} training points"
+    vae.set_rbf_beta(rbf_beta)
+    print(f"RBF beta = {rbf_beta:.4f} ({source})")
 
     # 6. Freeze for inference
     vae.disable_training()
