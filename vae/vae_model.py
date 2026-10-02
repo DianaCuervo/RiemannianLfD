@@ -144,17 +144,30 @@ class VAE(nn.Module, EmbeddedManifold):
         if not is_batched:
             points = points.unsqueeze(0)  # BxNxD
         if jacobian:
-            mu_pos, mu_qua, j_mu = self.decode(points, train_rbf=True, jacobian=True)  # BxNxD, BxNxDx(d)
-            std, j_std = self.dec_std_pos(points, jacobian=True)  # BxNxD, BxNxDx(d)
-            std_qua, j_std_qua = self.dec_std_qua(points, jacobian=True)  # BxNxD, BxNxDx(d)
-            embedded = torch.cat((mu_pos.mean, mu_qua.loc.unsqueeze(0), std_scale * std, std_scale * (1 / std_qua)),
-                                 dim=2)  # BxNx(2D)
-            j = torch.cat((j_mu, torch.cat((std_scale * j_std.squeeze(0), std_scale * j_std_qua.squeeze(0)), dim=1)),
-                          dim=2)  # BxNx(2D)x(d)
-            m = torch.einsum("bji,bjk->bik", j_mu, j_mu)
-            m2 = torch.einsum("bji,bjk->bik", j_std.squeeze(0), j_std.squeeze(0))
-            m3 = torch.einsum("bji,bjk->bik", j_std_qua.squeeze(0), j_std_qua.squeeze(0))
-            metric = (m3 + m2 + m).detach().cpu().numpy()
+            ### Original Geodesic Motions Skills code
+            # mu_pos, mu_qua, j_mu = self.decode(points, train_rbf=True, jacobian=True)  # BxNxD, BxNxDx(d)
+            # std, j_std = self.dec_std_pos(points, jacobian=True)  # BxNxD, BxNxDx(d)
+            # std_qua, j_std_qua = self.dec_std_qua(points, jacobian=True)  # BxNxD, BxNxDx(d)
+            # embedded = torch.cat((mu_pos.mean, mu_qua.loc.unsqueeze(0), std_scale * std, std_scale * (1 / std_qua)),
+            #                      dim=2)  # BxNx(2D)
+            # j = torch.cat((j_mu, torch.cat((std_scale * j_std.squeeze(0), std_scale * j_std_qua.squeeze(0)), dim=1)),
+            #               dim=2)  # BxNx(2D)x(d)
+            # m = torch.einsum("bji,bjk->bik", j_mu, j_mu)
+            # m2 = torch.einsum("bji,bjk->bik", j_std.squeeze(0), j_std.squeeze(0))
+            # m3 = torch.einsum("bji,bjk->bik", j_std_qua.squeeze(0), j_std_qua.squeeze(0))
+            # metric = (m3 + m2 + m).detach().cpu().numpy()
+
+            ### RiemanianLfD fix code
+            # NEW: Jacobian of the embedding by automatic differentiation (one forward-mode pass per latent
+            # dimension) instead of stochman's hand-written nnj Jacobians, which have a wrong BatchNorm1d term
+            # in the pinned stochman and differentiate std_qua although the embedding contains 1/std_qua.
+            # Valid in eval mode only (BatchNorm must use running statistics); get_M() calls model.eval().
+            eye = torch.eye(points.shape[-1], dtype=points.dtype, device=points.device)
+            out = [torch.func.jvp(lambda p: self.embed(p, jacobian=False), (points,), (eye[k].expand_as(points),))
+                   for k in range(points.shape[-1])]
+            embedded = out[0][0]  # BxNx(2D)
+            j = torch.stack([o[1] for o in out], dim=-1)  # BxNx(2D)x(d)
+            metric = torch.einsum("bnji,bnjk->bnik", j, j).flatten(0, 1).detach().cpu().numpy()  # G = J^T J, (B*N)xdxd
         else:
             mu_pos, mu_qua = self.decode(points, train_rbf=True, jacobian=False)  # BxNxD, BxNxDx(d)
             std = self.dec_std_pos(points, jacobian=False)  # BxNxD, BxNxDx(d)
