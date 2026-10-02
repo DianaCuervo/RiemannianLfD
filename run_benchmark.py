@@ -63,6 +63,7 @@ def load_respective_vae(args, device):
     original_path = vae_cfg['training_artifacts']['model_path']
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
     vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+    vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
     vae_path = vae_cfg['training_artifacts']['model_path']
     print(f"Loading VAE from: {vae_path}")
 
