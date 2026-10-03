@@ -2,7 +2,7 @@
     "framework": "NODE",
     "dataset": "lasa",
     "shape": "N",
-    "inference_time_seconds": 0.1855459213256836,
+    "inference_time_seconds": 0.19994473457336426,
     "riemannian_metrics": {
         "MSE_Error": 19.071189174107143,
         "Radial_Error": 0.535520076751709,
@@ -18,9 +18,9 @@
         "Violation_Std": 0.0
     },
     "euclidean_metrics": {
-        "Imitation_Pos_MSE": 0.08033500611782074,
-        "Imitation_Ori_MSE": 0.0018760267412289977,
-        "Goal_Pos_MSE": 0.007373402826488018,
-        "Goal_Ori_MSE": 0.00022167661518324167
+        "Imitation_Pos_MSE": 0.08030208945274353,
+        "Imitation_Ori_MSE": 0.001875131856650114,
+        "Goal_Pos_MSE": 0.007366113364696503,
+        "Goal_Ori_MSE": 0.0002214976993855089
     }
 }

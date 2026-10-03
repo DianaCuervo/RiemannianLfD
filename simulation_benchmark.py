@@ -70,6 +70,8 @@ def load_vae(args, data_cfg, device):
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
     vae_cfg['training_artifacts']['model_path'] = \
         vae_cfg['training_artifacts']['model_path'].replace('{shape}', dataset_shape)
+    vae_cfg['training_artifacts']['cluster_path'] = \
+        vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
 
     # The VAE's own training points (both quaternion signs), from which load_pretrained_vae
     # recomputes the RBF beta -- not the single-sign demos select_waypoints uses.

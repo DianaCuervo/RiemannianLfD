@@ -2,25 +2,25 @@
     "framework": "Graph",
     "dataset": "lasa",
     "shape": "N",
-    "inference_time_seconds": 26.257892370224,
+    "inference_time_seconds": 35.51144456863403,
     "riemannian_metrics": {
-        "MSE_Error": 37.342096540178574,
-        "Radial_Error": 9.436109394300729e-05,
-        "Max_Radial": 0.0004273748490959406,
+        "MSE_Error": 8.62639341517857,
+        "Radial_Error": 0.00026261270977556705,
+        "Max_Radial": 0.0021081441082060337,
         "Violation_Rate": 0.0,
         "Avg_Energy_Pred": 0.0,
         "Avg_Energy_GT": 0.0,
-        "MSE_Mean": 37.342096540178574,
+        "MSE_Mean": 8.62639341517857,
         "MSE_Std": 0.0,
-        "Radial_Mean": 9.436109394300729e-05,
-        "Radial_Std": 8.099240949377418e-05,
+        "Radial_Mean": 0.00026261270977556705,
+        "Radial_Std": 0.00027677713660523295,
         "Violation_Mean": 0.0,
         "Violation_Std": 0.0
     },
     "euclidean_metrics": {
-        "Imitation_Pos_MSE": 0.1812109351158142,
-        "Imitation_Ori_MSE": 0.004207826219499111,
-        "Goal_Pos_MSE": 9.855501831301794e-12,
-        "Goal_Ori_MSE": 4.477313632378355e-05
+        "Imitation_Pos_MSE": 0.03366496413946152,
+        "Imitation_Ori_MSE": 0.0007837535813450813,
+        "Goal_Pos_MSE": 1.597633553229727e-10,
+        "Goal_Ori_MSE": 4.477315815165639e-05
     }
 }
