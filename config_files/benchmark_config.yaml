@@ -34,11 +34,11 @@ datasets:
     # Preprocessing params for benchmark generation
     min_window: 200
     max_window: 980
-    samples_per_path: 50
+    samples_per_path: 10
     time_steps: 100
     # Benchmark-specific save paths (dynamically replaces {shape})
     benchmark_dir: './benchmark/data/lasa_{shape}'
-    gt_data: './benchmark/data/lasa_{shape}/ground_truth.pt'
+    gt_data: './benchmark/data/lasa_{shape}/ground_truth_140.pt'
 
 frameworks:
   graph:

@@ -1,0 +1,26 @@
+{
+    "framework": "NODE",
+    "dataset": "lasa",
+    "shape": "N",
+    "inference_time_seconds": 0.1855459213256836,
+    "riemannian_metrics": {
+        "MSE_Error": 19.071189174107143,
+        "Radial_Error": 0.535520076751709,
+        "Max_Radial": 12.580166816711426,
+        "Violation_Rate": 0.0,
+        "Avg_Energy_Pred": 0.0,
+        "Avg_Energy_GT": 0.0,
+        "MSE_Mean": 19.071189174107143,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 0.535520076751709,
+        "Radial_Std": 1.6728812456130981,
+        "Violation_Mean": 0.0,
+        "Violation_Std": 0.0
+    },
+    "euclidean_metrics": {
+        "Imitation_Pos_MSE": 0.08033500611782074,
+        "Imitation_Ori_MSE": 0.0018760267412289977,
+        "Goal_Pos_MSE": 0.007373402826488018,
+        "Goal_Ori_MSE": 0.00022167661518324167
+    }
+}
