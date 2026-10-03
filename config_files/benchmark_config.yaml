@@ -68,7 +68,7 @@ frameworks:
       model_name: 'NODE_{shape}RiemannianMSE_EGI'
       N:
         latent_dim: 2
-        hidden_dim: 512
+        hidden_dim: 256
       Angle:
         latent_dim: 2
         hidden_dim: 256

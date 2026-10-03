@@ -11,6 +11,8 @@ from benchmark.eval_stochman import run_stochman_benchmark
 from node.data.dataset import prepare_loaders
 from node.utils.plots import visualize_metric, plot_trajectories_on_manifold, plot_trajectories
 from vae.vae_model import load_pretrained_vae
+from vae.data.vae_dataset import load_vae_training_points
+from vae.utils.config import load_dataset_config
 import matplotlib.pyplot as plt
 
 
@@ -69,13 +71,14 @@ def load_respective_vae(args, device):
 
     # 2. Instantiate and load VAE weights
     total_dof = vae_cfg['architecture']['pos_dof'] + vae_cfg['architecture']['qua_dof']
-    dummy_data = torch.randn(100, total_dof)
-    vae_model = load_pretrained_vae(vae_cfg, dummy_data)
+    # Real training points, not noise: used to recompute beta if the checkpoint has no 'rbf_beta'
+    training_points = load_vae_training_points(load_dataset_config(args.dataset, args.shape))
+    vae_model = load_pretrained_vae(vae_cfg, training_points)
     vae_model.to(device).eval()
     print(f"VAE Model initialized with DOF={total_dof} on {device.upper()}")
 
-    ### Visualization of Manifold
-    # Extract latent_frame from the config
+    # ## Visualization of Manifold
+    # #Extract latent_frame from the config
     # space_title = ''
     # if args.dataset == 'toy':
     #     space_title = args.dataset.upper()
