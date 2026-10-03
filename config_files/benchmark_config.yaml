@@ -38,7 +38,7 @@ datasets:
     time_steps: 100
     # Benchmark-specific save paths (dynamically replaces {shape})
     benchmark_dir: './benchmark/data/lasa_{shape}'
-    gt_data: './benchmark/data/lasa_{shape}/ground_truth_700.pt'
+    gt_data: './benchmark/data/lasa_{shape}/ground_truth.pt'
 
 frameworks:
   graph:
