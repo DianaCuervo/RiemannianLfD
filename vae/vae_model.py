@@ -1,14 +1,18 @@
+import copy
 import torch
 import torch.nn as nn
 import torch.distributions as td
 import numpy as np
 import pickle
 from stochman import nnj
+from stochman.manifold import EmbeddedManifold
 import hyperspherical_vae.distributions.von_mises_fisher as vmf
 from sklearn.cluster import KMeans
+from GeodesicMotionSkills.Experiments.Utils.environment import Environment
+from tqdm import tqdm
 
 ###Create VAE Class --> To reconsider as it migth not be needed
-class VAE(nn.Module):
+class VAE(nn.Module, EmbeddedManifold):
     # (Note: I removed EmbeddedManifold inheritance here assuming you just need standard nn.Module,
     # but keep it if StochMan strictly requires it)
 
@@ -26,6 +30,7 @@ class VAE(nn.Module):
                 sigma_z:    the scale parameter of the distribution given as the output of the VAE's encoder
         """
         super(VAE, self).__init__()
+        self.env = Environment()
 
         #architecture
         self.p = int(layers[0])  # Dimension of x
@@ -39,6 +44,15 @@ class VAE(nn.Module):
         self.batch_size = batch_size
         self.num_clusters = 500  # Number of clusters in the RBF k_mean
         self.vmf_concentration_scale = 1e2  # the scale of vmf distribution concentration
+        self.quaternion_log_scale = 1e10  # the scale of quaternion log-likelihood in the ELBO
+
+        # Training-only flags (mirrors GeodesicMotionSkills' toy_example.py VAE)
+        self.kl_coeff = 1.0  # Automatically Set
+        self.kl_coeff_max = 1.0
+        self.activate_KL = False  # if enabled, KL is considered in the ELBO calculation
+        self.empowered_quaternions = False  # when True, scales the quaternion log-likelihood in the Loss
+
+        self.time_step = 0
 
         #  Initialize VAE
         enc = []
@@ -73,7 +87,7 @@ class VAE(nn.Module):
 
         self.encoder_scale_fixed = nn.Parameter(torch.tensor([sigma_z]), requires_grad=False)
         self.decoder_scale_pos = nn.Parameter(torch.tensor(sigma), requires_grad=False)
-        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, qua_dof)) *
+        self.decoder_scale_qua = nn.Parameter(torch.tensor(np.ones((self.batch_size, self.qua_dof)) *
                                                            self.vmf_concentration_scale), requires_grad=False)
         self.dec_std_pos = lambda z: torch.ones(20, self.p, device=self.device)
         self.dec_std_qua = lambda z: torch.ones(20, self.p, device=self.device)
@@ -81,6 +95,23 @@ class VAE(nn.Module):
         self.prior_loc = nn.Parameter(torch.zeros(self.d), requires_grad=False)
         self.prior_scale = nn.Parameter(torch.ones(self.d), requires_grad=False)
         self.prior = td.Independent(td.Normal(loc=self.prior_loc, scale=self.prior_scale), 1)
+
+    def to(self, *args, **kwargs):
+        module = super().to(*args, **kwargs)
+        device, _, _, _ = torch._C._nn._parse_to(*args, **kwargs)
+        if device is not None:
+            module.device = device
+        return module
+
+    def cuda(self, device=None):
+        module = super().cuda(device)
+        module.device = next(module.parameters()).device
+        return module
+
+    def cpu(self):
+        module = super().cpu()
+        module.device = torch.device('cpu')
+        return module
 
     def embed(self, points, jacobian=False):
         """
@@ -113,17 +144,30 @@ class VAE(nn.Module):
         if not is_batched:
             points = points.unsqueeze(0)  # BxNxD
         if jacobian:
-            mu_pos, mu_qua, j_mu = self.decode(points, train_rbf=True, jacobian=True)  # BxNxD, BxNxDx(d)
-            std, j_std = self.dec_std_pos(points, jacobian=True)  # BxNxD, BxNxDx(d)
-            std_qua, j_std_qua = self.dec_std_qua(points, jacobian=True)  # BxNxD, BxNxDx(d)
-            embedded = torch.cat((mu_pos.mean, mu_qua.loc.unsqueeze(0), std_scale * std, std_scale * (1 / std_qua)),
-                                 dim=2)  # BxNx(2D)
-            j = torch.cat((j_mu, torch.cat((std_scale * j_std.squeeze(0), std_scale * j_std_qua.squeeze(0)), dim=1)),
-                          dim=2)  # BxNx(2D)x(d)
-            m = torch.einsum("bji,bjk->bik", j_mu, j_mu)
-            m2 = torch.einsum("bji,bjk->bik", j_std.squeeze(0), j_std.squeeze(0))
-            m3 = torch.einsum("bji,bjk->bik", j_std_qua.squeeze(0), j_std_qua.squeeze(0))
-            metric = (m3 + m2 + m).detach().cpu().numpy()
+            ### Original Geodesic Motions Skills code
+            # mu_pos, mu_qua, j_mu = self.decode(points, train_rbf=True, jacobian=True)  # BxNxD, BxNxDx(d)
+            # std, j_std = self.dec_std_pos(points, jacobian=True)  # BxNxD, BxNxDx(d)
+            # std_qua, j_std_qua = self.dec_std_qua(points, jacobian=True)  # BxNxD, BxNxDx(d)
+            # embedded = torch.cat((mu_pos.mean, mu_qua.loc.unsqueeze(0), std_scale * std, std_scale * (1 / std_qua)),
+            #                      dim=2)  # BxNx(2D)
+            # j = torch.cat((j_mu, torch.cat((std_scale * j_std.squeeze(0), std_scale * j_std_qua.squeeze(0)), dim=1)),
+            #               dim=2)  # BxNx(2D)x(d)
+            # m = torch.einsum("bji,bjk->bik", j_mu, j_mu)
+            # m2 = torch.einsum("bji,bjk->bik", j_std.squeeze(0), j_std.squeeze(0))
+            # m3 = torch.einsum("bji,bjk->bik", j_std_qua.squeeze(0), j_std_qua.squeeze(0))
+            # metric = (m3 + m2 + m).detach().cpu().numpy()
+
+            ### RiemanianLfD fix code
+            # NEW: Jacobian of the embedding by automatic differentiation (one forward-mode pass per latent
+            # dimension) instead of stochman's hand-written nnj Jacobians, which have a wrong BatchNorm1d term
+            # in the pinned stochman and differentiate std_qua although the embedding contains 1/std_qua.
+            # Valid in eval mode only (BatchNorm must use running statistics); get_M() calls model.eval().
+            eye = torch.eye(points.shape[-1], dtype=points.dtype, device=points.device)
+            out = [torch.func.jvp(lambda p: self.embed(p, jacobian=False), (points,), (eye[k].expand_as(points),))
+                   for k in range(points.shape[-1])]
+            embedded = out[0][0]  # BxNx(2D)
+            j = torch.stack([o[1] for o in out], dim=-1)  # BxNx(2D)x(d)
+            metric = torch.einsum("bnji,bnjk->bnik", j, j).flatten(0, 1).detach().cpu().numpy()  # G = J^T J, (B*N)xdxd
         else:
             mu_pos, mu_qua = self.decode(points, train_rbf=True, jacobian=False)  # BxNxD, BxNxDx(d)
             std = self.dec_std_pos(points, jacobian=False)  # BxNxD, BxNxDx(d)
@@ -205,6 +249,18 @@ class VAE(nn.Module):
             return position_distribution, quaternion_distribution, quaternion_distribution_negative
         return position_distribution, quaternion_distribution
 
+    def to(self, device=None, *args, **kwargs):
+        """
+        Keep self.device (a plain attribute used by init_std/fit_std for placeholder
+        tensors and new submodules) in sync with wherever nn.Module.to() actually
+        moves the model's parameters - otherwise .to('cuda') silently leaves
+        self.device at its __init__ default of 'cpu', producing cross-device errors.
+        """
+        result = super().to(device, *args, **kwargs)
+        if device is not None:
+            self.device = device
+        return result
+
     def disable_training(self):
         """ Disabling the training for all the networks
         Inputs:
@@ -230,13 +286,13 @@ class VAE(nn.Module):
             _, z = self.encode(x, train_rbf=True)
         d = z.shape[1]
         inv_max_std = np.sqrt(1e-12)  # 1.0 / x.std()
-        beta = beta_scale / z.std(dim=0).mean()
-        rbf_beta = beta * torch.ones(1, self.num_clusters)
+        beta = beta_scale / z.std(dim=0).mean()  # same formula as compute_rbf_beta
+        rbf_beta = beta * torch.ones(1, self.num_clusters, device=z.device)
 
         if load_clusters:
             k_means = pickle.load(open(cluster_path, "rb"))
         else:
-            k_means = KMeans(n_clusters=self.num_clusters).fit(z.numpy())
+            k_means = KMeans(n_clusters=self.num_clusters).fit(z.detach().cpu().numpy())
             pickle.dump(k_means, open(cluster_path, "wb"))
 
         centers = torch.tensor(k_means.cluster_centers_)
@@ -252,6 +308,63 @@ class VAE(nn.Module):
         self.dec_std_qua.to(self.device)
         cluster_centers = k_means.cluster_centers_
         return cluster_centers
+
+    def compute_rbf_beta(self, x, beta_scale=1.0):
+        """ Recompute the RBF bandwidth init_std set during training: beta_scale over the
+        mean per-axis std of the latent codes of x. Only meaningful once the encoder is trained.
+
+        During training init_std runs right after train(), so encoder_loc's BatchNorm layers
+        are in train mode and normalise with x's own batch statistics; this does the same.
+        Such a forward pass also updates their running statistics, which inference relies
+        on, so those (and the layers' modes) are restored afterwards.
+        Inputs:
+            x: the VAE training points
+            beta_scale: config multiplier (architecture.beta_scale)
+        Outputs:
+            beta: 0-dim tensor
+        """
+        saved_state = copy.deepcopy(self.encoder_loc.state_dict())
+        saved_modes = [m.training for m in self.encoder_loc.modules()]
+        try:
+            self.encoder_loc.train()
+            with torch.no_grad():
+                z = self.encoder_loc(x)
+        finally:
+            self.encoder_loc.load_state_dict(saved_state)
+            for module, mode in zip(self.encoder_loc.modules(), saved_modes):
+                module.training = mode
+        return beta_scale / z.std(dim=0).mean()
+
+    def set_rbf_beta(self, beta):
+        """ Overwrite the bandwidth of both RBF layers (dec_std_pos[0], dec_std_qua[0]).
+
+        nnj.RBF keeps beta as a plain attribute, not a parameter or buffer, so it is not in
+        the checkpoint and load_state_dict cannot restore it.
+        """
+        rbf_beta = float(beta) * torch.ones(1, self.num_clusters, device=self.device)
+        self.dec_std_pos[0].beta = rbf_beta
+        self.dec_std_qua[0].beta = rbf_beta
+
+    def fit_std(self, data_loader, num_epochs, model, n_samples=1, learning_rate=1e-4):
+        """ Training the standard deviation models including 2 RBF networks for Cartesian and quaternion decoders
+        Inputs:
+            data_loader: the demonstration training dataset
+            num_epochs: number of epochs
+            model: an instance of VAE class
+        Outputs:
+
+        """
+        from vae.training.vae_train import loss_function_elbo  # deferred to avoid a circular import
+        params = list(self.encoder_scale.parameters()) + list(self.dec_std_qua.parameters()) + list(
+            self.dec_std_pos.parameters())
+        optimizer = torch.optim.Adam(params, lr=learning_rate)
+        for epoch in tqdm(range(num_epochs), desc="Stage 3/3: RBF variance networks"):
+            for batch_idx, (data,) in enumerate(data_loader):
+                data = data.to(self.device)
+                optimizer.zero_grad()
+                loss, loss_kl, loss_log = loss_function_elbo(data, model, train_rbf=True, n_samples=n_samples)
+                loss.backward()
+            optimizer.step()
 
 # Metric set of points *also paths
 def get_M(model, data):
@@ -274,10 +387,15 @@ def get_M(model, data):
     return e, J, M
 
 # Load the pretrained VAE
-def load_pretrained_vae(config, dummy_tensor, device='cpu'):
+def load_pretrained_vae(config, data_tensor, device='cpu'):
     """
-    Instantiates the VAE, builds empty layers using a dummy tensor,
-    and loads the real pre-trained weights.
+    Instantiates the VAE, builds its layers, and loads the real pre-trained weights.
+
+    data_tensor must be the VAE's real training points (see
+    vae.data.vae_dataset.load_vae_training_points), not random noise: unless the checkpoint stores
+    'rbf_beta', the RBF bandwidth is recomputed from it with the trained encoder, exactly
+    as training did. nnj.RBF keeps beta outside the state dict, so load_state_dict alone
+    would leave whatever init_std computed from the still-untrained encoder.
     """
     # 1. Read directly from the config dictionary
     layers = config['architecture']['layers']
@@ -294,14 +412,24 @@ def load_pretrained_vae(config, dummy_tensor, device='cpu'):
     vae = VAE(layers=layers, batch_size=batch_size, pos_dof=pos_dof, qua_dof=qua_dof, sigma=sigma, sigma_z=sigma_z).to(device)
     vae.obstacle_input_space = None
 
-    # 3. Initialize clusters (Using random noise just to build the graph dimensions!)
-    vae.init_std(dummy_tensor.to(device), load_clusters=True, cluster_path=cluster_path, beta_scale=beta_scale)
+    # 3. Build the RBF variance networks (their weights are overwritten in step 4)
+    data_tensor = data_tensor.float().to(device)
+    vae.init_std(data_tensor, load_clusters=True, cluster_path=cluster_path, beta_scale=beta_scale)
 
     # 4. OVERWRITE the fake initialization with your real, trained weights
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     vae.load_state_dict(checkpoint['model_state_dict'])
 
-    # 5. Freeze for inference
+    # 5. Restore the RBF bandwidth, which is not part of the state dict
+    if 'rbf_beta' in checkpoint:
+        rbf_beta, source = float(checkpoint['rbf_beta']), "from checkpoint"
+    else:
+        rbf_beta = float(vae.compute_rbf_beta(data_tensor, beta_scale))
+        source = f"recomputed from {data_tensor.shape[0]} training points"
+    vae.set_rbf_beta(rbf_beta)
+    print(f"RBF beta = {rbf_beta:.4f} ({source})")
+
+    # 6. Freeze for inference
     vae.disable_training()
     vae.eval()
 

@@ -13,6 +13,9 @@ __pycache__/
 node/training/training_logs/*.txt
 node/training/training_curves/*.svg
 node/training/training_curves/*.png
+vae/training/training_logs/*.txt
+vae/training/training_curves/*
+vae/evaluation/results/
 *.log
 
 # 4. Processed Data & Weights

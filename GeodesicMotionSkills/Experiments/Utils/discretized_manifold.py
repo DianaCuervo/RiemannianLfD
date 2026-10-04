@@ -58,18 +58,31 @@ class DiscretizedManifold:
         self.G.add_nodes_from(range(xsize*ysize))
         
         # add edges
-        line = CubicSpline(begin=torch.zeros(1, dim), end=torch.ones(1, dim), num_nodes=2)
-        t = torch.linspace(0, 1, 5)
+        line = CubicSpline(
+            begin=torch.zeros(1, dim, device=grid.device),
+            end=torch.ones(1, dim, device=grid.device),
+            num_nodes=2,
+        ).to(grid.device)
+        t = torch.linspace(0, 1, 5, device=grid.device)
         self.fixed_positions = {}
-        self.decoded_positions = torch.zeros((xsize * ysize, 2))
+        #self.decoded_positions = torch.zeros((xsize * ysize, 2)) ###---> Orginal code
+        self.decoded_positions = torch.zeros((xsize * ysize, model.pos_dof))
 
         for x in range(xsize):
             for y in range(ysize):
                 line.begin = grid[:, x, y].view(1, -1)
 
                 n = node_idx(x, y)
-                self.fixed_positions[n] = (grid[0, x, y].detach().numpy(),grid[1, x, y].detach().numpy())
-                self.decoded_positions[n] = model.decode(grid[:, x, y], train_rbf = True)[0].mean.flatten()
+                self.fixed_positions[n] = (
+                    grid[0, x, y].detach().cpu().numpy(),
+                    grid[1, x, y].detach().cpu().numpy(),
+                )
+                self.decoded_positions[n] = (
+                    model.decode(grid[:, x, y], train_rbf=True)[0]
+                    .mean.flatten()
+                    .detach()
+                    .cpu()
+                )
 
                 with torch.no_grad():
                     if x > 0:
@@ -243,7 +256,7 @@ class DiscretizedManifold:
             t = torch.tensor(weights, device=device).cumsum(dim=0) / sum(weights)
 
         if curve is None:
-            curve = CubicSpline(p1, p2)
+            curve = CubicSpline(p1, p2).to(device)
         else:
             curve.begin = p1
             curve.end = p2

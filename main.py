@@ -10,7 +10,8 @@ import json
 from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
-from vae.vae_model import VAE, load_pretrained_vae
+from vae.vae_model import load_pretrained_vae
+from vae.data.vae_dataset import load_vae_training_points
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
@@ -77,10 +78,11 @@ def main():
     if args.dataset == 'lasa':
         dataset_shape = args.shape + '-Shape'
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
     elif args.dataset == 'lerobot':
         dataset_task = args.task
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task)
-
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{task}', dataset_task)
     print(f"Loading VAE from: {vae_cfg['training_artifacts']['model_path']}")
 
     # Load node_config
@@ -120,8 +122,8 @@ def main():
     print("\n--- Initializing Models ---")
     # Pass the VAE config
     total_dof = vae_cfg['architecture']['pos_dof'] + vae_cfg['architecture']['qua_dof']
-    dummy_data = torch.randn(100, total_dof)
-    vae = load_pretrained_vae(vae_cfg, dummy_data)
+    # Real training points, not noise: the RBF beta is recomputed from them (see load_pretrained_vae)
+    vae = load_pretrained_vae(vae_cfg, load_vae_training_points(node_cfg['dataset']))
     print(f"VAE Model initialized with DOF={total_dof}")
 
     ### Visualization of Manifold
@@ -131,7 +133,7 @@ def main():
     #     space_title = args.dataset.upper()
     # if args.dataset == 'lasa':
     #     space_title = args.dataset.upper() + ' ' +args.shape+ '-Shape'
-    # if args.dataset == 'robot':
+    # if args.dataset == 'lerobot':
     #         space_title = args.dataset.upper() + ' Experiment'
     # l_max = vae_cfg['visualization']['latent_frame']
     # visualize_metric(vae, space_title, l_max)
@@ -151,11 +153,11 @@ def main():
         train_ratio=node_cfg['dataset']['train_rat'],
         val_ratio=node_cfg['dataset']['val_rat'],
     )
-    # ## Visualization of Manifold with processed demonstrations
-    # l_max = vae_cfg['visualization']['latent_frame']
-    # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
-    # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
-    # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
+    ## Visualization of Manifold with processed demonstrations
+    l_max = vae_cfg['visualization']['latent_frame']
+    plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
+    plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
+    plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
 
     if args.mode == 'train':
         ### TRAIN NODE!
