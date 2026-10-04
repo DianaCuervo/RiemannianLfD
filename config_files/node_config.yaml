@@ -89,14 +89,14 @@ lasa:
       lr_gamma: 0.1
       lr_drop_fraction: 0.83
       batch_size: 32
-      epochs: 3000
+      epochs: 10 #3000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
-      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      metric_clamp_min: 1e-6        # Centralized metric ceiling
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
-        base_scale: 0.0001   # The shrink ray
+        base_scale: 1 #0.0001   # The shrink ray
         ramp_start: 500      # Epoch when goal/energy pressure begins
         ramp_length: 1500    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
