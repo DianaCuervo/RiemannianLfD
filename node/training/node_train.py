@@ -10,22 +10,24 @@ from vae.vae_model import get_M
 def safe_regularize_metric(G_raw, clamp_min, clamp_max, device):
     """
     Safely regularizes the metric tensor to prevent negative energy
-    while avoiding exploding gradients.
+    and exploding gradients WITHOUT destroying the PSD geometry.
     """
-    # 1. Ensure it's a tensor on the correct device
     if not isinstance(G_raw, torch.Tensor):
         G = torch.tensor(G_raw, dtype=torch.float32, device=device)
     else:
         G = G_raw.clone().detach().to(device)
 
-    # 2. Cap maximum values to prevent exploding energy
-    # (clamping max is less destructive to PSD than clamping min)
-    G = torch.clamp(G, max=clamp_max)
-
-    # 3. FIX: Ensure Positive-Definiteness by adding clamp_min ONLY to the diagonal
+    # 1. Jitter: Guarantee strictly positive eigenvalues
     D = G.shape[-1]
     eye = torch.eye(D, dtype=G.dtype, device=device)
-    G = G + clamp_min * eye
+    G = G + (clamp_min * eye)
+
+    # 2. Proportional Scaling: Prevent exploding energy safely
+    # If the largest absolute value in the matrix exceeds clamp_max,
+    # scale the ENTIRE matrix down uniformly. This preserves PSD!
+    max_abs_val = torch.max(torch.abs(G))
+    if max_abs_val > clamp_max:
+        G = G * (clamp_max / max_abs_val)
 
     return G
 
