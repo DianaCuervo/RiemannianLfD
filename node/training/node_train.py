@@ -6,7 +6,7 @@ import numpy as np
 
 from vae.vae_model import get_M
 
-# --- Riemannian Metric (G) with Tikhonov Regularization
+# --- Riemannian Metric (G) with Proportional Matrix Scaling Regularization
 def safe_regularize_metric(G_raw, clamp_min, clamp_max, device):
     """
     Safely regularizes the metric tensor to prevent negative energy
