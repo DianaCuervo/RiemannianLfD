@@ -153,11 +153,11 @@ def main():
         train_ratio=node_cfg['dataset']['train_rat'],
         val_ratio=node_cfg['dataset']['val_rat'],
     )
-    ## Visualization of Manifold with processed demonstrations
-    l_max = vae_cfg['visualization']['latent_frame']
-    plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
-    plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
-    plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
+    # ## Visualization of Manifold with processed demonstrations
+    # l_max = vae_cfg['visualization']['latent_frame']
+    # plot_trajectories_on_manifold(vae, train_loader, space_name=args.shape, latent_max=l_max)
+    # plot_trajectories_on_manifold(vae, val_loader, space_name=args.shape, latent_max=l_max)
+    # plot_trajectories_on_manifold(vae, test_loader, space_name=args.shape, latent_max=l_max)
 
     if args.mode == 'train':
         ### TRAIN NODE!
