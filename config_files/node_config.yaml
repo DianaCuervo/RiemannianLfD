@@ -100,9 +100,9 @@ lasa:
         ramp_start: 500      # Epoch when goal/energy pressure begins
         ramp_length: 1500    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 100.0  # What goal weight ramps up to
-        w_ener_target: 0.1   # What energy weight ramps up to
+        w_goal_start: 0.0    # What goal weight starts at when ramp begins
+        w_goal_target: 0.0  # What goal weight ramps up to
+        w_ener_target: 0.0   # What energy weight ramps up to
   Angle:
     # Model Architecture Parameters
     architecture:
