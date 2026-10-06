@@ -24,7 +24,9 @@ def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
             # 1. Get raw Jacobian J (index 1) instead of G
             _, J_raw, _ = get_M(vae, z_raw.clone())
             J_raw = torch.as_tensor(J_raw, dtype=torch.float32, device=device)
-            K = J_raw.shape[1]
+
+            # Dynamically handle shape: J_raw can be (T, K, D) or (B*T, K, D)
+            K = J_raw.shape[-2]
             J = J_raw.reshape(T, K, D)
 
             # Density from J: Trace of G (sum of squared elements of J) / 2

@@ -128,8 +128,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                 # Get J (index 1) instead of G (index 2)
                 _, J_raw_true, _ = get_M(vae, z_target.reshape(-1, D).clone())
                 J_raw_true = torch.as_tensor(J_raw_true, dtype=torch.float32, device=device)
-                K = J_raw_true.shape[1]  # K is the embedding dimension (2D)
-                J_true = J_raw_true.reshape(B, T_steps, K, D)
+                # FIX: Use -1 so PyTorch automatically calculates the embedding dimension K
+                J_true = J_raw_true.reshape(B, T_steps, -1, D)
 
             delta_imit = y_pred - z_target
             # Matrix-Vector product: J @ delta
@@ -144,8 +144,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                 with torch.no_grad():
                     _, J_raw, _ = get_M(vae, z_pred.reshape(-1, D).clone())
                     J_raw = torch.as_tensor(J_raw, dtype=torch.float32, device=device)
-                    K = J_raw.shape[1]
-                    J_pred = J_raw.reshape(T_steps, B, K, D)
+                    # FIX: Use -1
+                    J_pred = J_raw.reshape(T_steps, B, -1, D)
 
                 # J @ v
                 J_v_pred = torch.einsum('tbkd,tbd->tbk', J_pred, v_pred)
@@ -160,8 +160,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
             with torch.no_grad():
                 _, J_raw_goal, _ = get_M(vae, p2.clone())
                 J_raw_goal = torch.as_tensor(J_raw_goal, dtype=torch.float32, device=device)
-                K = J_raw_goal.shape[1]
-                J_goal = J_raw_goal.reshape(B, K, D)
+                # FIX: Use -1
+                J_goal = J_raw_goal.reshape(B, -1, D)
 
             delta_goal = pred_goal - p2
             # J @ delta
@@ -198,8 +198,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     # Validation Imitation
                     _, J_raw_val_true, _ = get_M(vae, z_target.reshape(-1, D_val).clone())
                     J_raw_val_true = torch.as_tensor(J_raw_val_true, dtype=torch.float32, device=device)
-                    K = J_raw_val_true.shape[1]
-                    J_val_true = J_raw_val_true.reshape(B_val, T_val, K, D_val)
+                    J_val_true = J_raw_val_true.reshape(B_val, T_val, -1, D_val)
 
                     del_val_imit = y_pred_val - z_target
                     J_del_val_imit = torch.einsum('bnkd,bnd->bnk', J_val_true, del_val_imit)
@@ -210,8 +209,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     # Validation Energy
                     _, J_raw_val_pred, _ = get_M(vae, z_pred.reshape(-1, D_val).clone())
                     J_raw_val_pred = torch.as_tensor(J_raw_val_pred, dtype=torch.float32, device=device)
-                    K = J_raw_val_pred.shape[1]
-                    J_val_pred = J_raw_val_pred.reshape(T_val, B_val, K, D_val)
+                    J_val_pred = J_raw_val_pred.reshape(T_val, B_val, -1, D_val)
 
                     J_v_val_pred = torch.einsum('tbkd,tbd->tbk', J_val_pred, v_pred)
                     val_ener += (torch.sum(J_v_val_pred ** 2, dim=-1).mean().item()) * METRIC_SCALE_ENERGY
@@ -219,8 +217,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     # Validation Goal
                     _, J_raw_val_goal, _ = get_M(vae, p2.clone())
                     J_raw_val_goal = torch.as_tensor(J_raw_val_goal, dtype=torch.float32, device=device)
-                    K = J_raw_val_goal.shape[1]
-                    J_val_goal = J_raw_val_goal.reshape(B_val, K, D_val)
+                    J_val_goal = J_raw_val_goal.reshape(B_val, -1, D_val)
 
                     del_val_goal = z_pred[-1] - p2
                     J_del_val_goal = torch.einsum('bkd,bd->bk', J_val_goal, del_val_goal)
