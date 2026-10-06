@@ -6,31 +6,6 @@ import numpy as np
 
 from vae.vae_model import get_M
 
-# --- Riemannian Metric (G) with Proportional Matrix Scaling Regularization
-def safe_regularize_metric(G_raw, clamp_min, clamp_max, device):
-    """
-    Safely regularizes the metric tensor to prevent negative energy
-    and exploding gradients WITHOUT destroying the PSD geometry.
-    """
-    if not isinstance(G_raw, torch.Tensor):
-        G = torch.tensor(G_raw, dtype=torch.float32, device=device)
-    else:
-        G = G_raw.clone().detach().to(device)
-
-    # 1. Jitter: Guarantee strictly positive eigenvalues
-    D = G.shape[-1]
-    eye = torch.eye(D, dtype=G.dtype, device=device)
-    G = G + (clamp_min * eye)
-
-    # 2. Proportional Scaling: Prevent exploding energy safely
-    # If the largest absolute value in the matrix exceeds clamp_max,
-    # scale the ENTIRE matrix down uniformly. This preserves PSD!
-    max_abs_val = torch.max(torch.abs(G))
-    if max_abs_val > clamp_max:
-        G = G * (clamp_max / max_abs_val)
-
-    return G
-
 # --- SCHEDULER based on Epochs ---
 def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_length=2500,
                                    w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0):
@@ -77,8 +52,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     drop_fraction = node_cfg['training'].get('lr_drop_fraction', 0.35)
     epochs = node_cfg['training'].get('epochs', 4000)
     # Extract countermeasures parameters against exploding energy
-    clamp_min = float(node_cfg["training"]["metric_clamp_min"])
-    clamp_max = float(node_cfg["training"]["metric_clamp_max"])
+    #clamp_min = float(node_cfg["training"]["metric_clamp_min"])
+    #clamp_max = float(node_cfg["training"]["metric_clamp_max"])
     clip_norm = node_cfg["training"]["grad_clip_norm"]
     # Extract scheduler variables
     sched_cfg = node_cfg['training'].get('scheduler', {})
@@ -148,32 +123,50 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
             y_pred = z_pred.permute(1, 0, 2)
 
             # LOSS CALCULATION
+            # --- IMITATION LOSS ---
             with torch.no_grad():
-                G_raw_true = get_M(vae, z_target.reshape(-1, D).clone())[2]
-                G_true = safe_regularize_metric(G_raw_true, clamp_min, clamp_max, device).reshape(B, T_steps, D, D)
+                # Get J (index 1) instead of G (index 2)
+                _, J_raw_true, _ = get_M(vae, z_target.reshape(-1, D).clone())
+                J_raw_true = torch.as_tensor(J_raw_true, dtype=torch.float32, device=device)
+                K = J_raw_true.shape[1]  # K is the embedding dimension (2D)
+                J_true = J_raw_true.reshape(B, T_steps, K, D)
 
             delta_imit = y_pred - z_target
-            squared_riem_dist = torch.einsum('bni,bnij,bnj->bn', delta_imit, G_true, delta_imit)
-            loss_imitation = torch.mean(squared_riem_dist)
+            # Matrix-Vector product: J @ delta
+            J_delta_imit = torch.einsum('bnkd,bnd->bnk', J_true, delta_imit)
+            # Squared norm: ||J * delta||^2
+            loss_imitation = torch.mean(torch.sum(J_delta_imit ** 2, dim=-1))
 
             euclidean_imit = torch.mean((y_pred.detach() - z_target) ** 2).item()
 
+            # --- ENERGY LOSS ---
             if w_energy > 0:
-                G_raw = get_M(vae, (z_pred.reshape(-1, D)).clone())[2]
-                G = safe_regularize_metric(G_raw, clamp_min, clamp_max, device).reshape(T_steps, B, D, D)
+                with torch.no_grad():
+                    _, J_raw, _ = get_M(vae, z_pred.reshape(-1, D).clone())
+                    J_raw = torch.as_tensor(J_raw, dtype=torch.float32, device=device)
+                    K = J_raw.shape[1]
+                    J_pred = J_raw.reshape(T_steps, B, K, D)
 
-                energy_per_step = torch.einsum('tb i, tb ij, tb j -> tb', v_pred, G, v_pred)
+                # J @ v
+                J_v_pred = torch.einsum('tbkd,tbd->tbk', J_pred, v_pred)
+                # ||Jv||^2
+                energy_per_step = torch.sum(J_v_pred ** 2, dim=-1)
                 loss_energy = energy_per_step.mean() * METRIC_SCALE_ENERGY
             else:
                 loss_energy = torch.tensor(0.0).to(device)
 
+            # --- GOAL LOSS ---
             pred_goal = z_pred[-1]
             with torch.no_grad():
-                G_raw_goal = get_M(vae, p2.clone())[2]
-                G_goal = safe_regularize_metric(G_raw_goal, clamp_min, clamp_max, device).reshape(B, D, D)
+                _, J_raw_goal, _ = get_M(vae, p2.clone())
+                J_raw_goal = torch.as_tensor(J_raw_goal, dtype=torch.float32, device=device)
+                K = J_raw_goal.shape[1]
+                J_goal = J_raw_goal.reshape(B, K, D)
 
             delta_goal = pred_goal - p2
-            loss_goal = torch.mean(torch.einsum('bi,bij,bj->b', delta_goal, G_goal, delta_goal))
+            # J @ delta
+            J_delta_goal = torch.einsum('bkd,bd->bk', J_goal, delta_goal)
+            loss_goal = torch.mean(torch.sum(J_delta_goal ** 2, dim=-1))
 
             total_loss = (w_imitation * loss_imitation) + (w_goal * loss_goal) + (w_energy * loss_energy)
 
@@ -203,27 +196,35 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     y_pred_val = z_pred.permute(1, 0, 2)
 
                     # Validation Imitation
-                    G_raw_val_true = get_M(vae, z_target.reshape(-1, D_val).clone())[2]
-                    G_val_true = safe_regularize_metric(G_raw_val_true, clamp_min, clamp_max, device).reshape(B_val, T_val, D_val, D_val)
-                    del_val_imit = y_pred_val - z_target
+                    _, J_raw_val_true, _ = get_M(vae, z_target.reshape(-1, D_val).clone())
+                    J_raw_val_true = torch.as_tensor(J_raw_val_true, dtype=torch.float32, device=device)
+                    K = J_raw_val_true.shape[1]
+                    J_val_true = J_raw_val_true.reshape(B_val, T_val, K, D_val)
 
-                    val_imit += torch.mean(
-                        torch.einsum('bni,bnij,bnj->bn', del_val_imit, G_val_true, del_val_imit)).item()
+                    del_val_imit = y_pred_val - z_target
+                    J_del_val_imit = torch.einsum('bnkd,bnd->bnk', J_val_true, del_val_imit)
+                    val_imit += torch.mean(torch.sum(J_del_val_imit ** 2, dim=-1)).item()
+
                     val_euclidean_imit += torch.mean((y_pred_val - z_target) ** 2).item()
 
                     # Validation Energy
-                    G_raw_val_pred = get_M(vae, (z_pred.reshape(-1, D_val)).clone())[2]
-                    G_val_pred = safe_regularize_metric(G_raw_val_pred, clamp_min, clamp_max, device).reshape(T_val, B_val, D_val, D_val)
+                    _, J_raw_val_pred, _ = get_M(vae, z_pred.reshape(-1, D_val).clone())
+                    J_raw_val_pred = torch.as_tensor(J_raw_val_pred, dtype=torch.float32, device=device)
+                    K = J_raw_val_pred.shape[1]
+                    J_val_pred = J_raw_val_pred.reshape(T_val, B_val, K, D_val)
 
-                    val_ener += (torch.einsum('tb i, tb ij, tb j -> tb', v_pred, G_val_pred,
-                                              v_pred).mean().item()) * METRIC_SCALE_ENERGY
+                    J_v_val_pred = torch.einsum('tbkd,tbd->tbk', J_val_pred, v_pred)
+                    val_ener += (torch.sum(J_v_val_pred ** 2, dim=-1).mean().item()) * METRIC_SCALE_ENERGY
 
                     # Validation Goal
-                    G_raw_val_goal = get_M(vae, p2.clone())[2]
-                    G_val_goal = safe_regularize_metric(G_raw_val_goal, clamp_min, clamp_max, device).reshape(B_val, D_val, D_val)
-                    del_val_goal = z_pred[-1] - p2
+                    _, J_raw_val_goal, _ = get_M(vae, p2.clone())
+                    J_raw_val_goal = torch.as_tensor(J_raw_val_goal, dtype=torch.float32, device=device)
+                    K = J_raw_val_goal.shape[1]
+                    J_val_goal = J_raw_val_goal.reshape(B_val, K, D_val)
 
-                    val_goal += torch.mean(torch.einsum('bi,bij,bj->b', del_val_goal, G_val_goal, del_val_goal)).item()
+                    del_val_goal = z_pred[-1] - p2
+                    J_del_val_goal = torch.einsum('bkd,bd->bk', J_val_goal, del_val_goal)
+                    val_goal += torch.mean(torch.sum(J_del_val_goal ** 2, dim=-1)).item()
 
                 n_val = max(len(val_loader), 1)
                 avg_val_imit = val_imit / n_val
@@ -249,7 +250,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
 
             if w_energy > 0:
                 with torch.no_grad():
-                    mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                    #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
             else:
                 mean_density = 0.0
 
