@@ -13,6 +13,8 @@ from node.node_model import GoalConditionedNODE
 from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
 from vae.vae_model import load_pretrained_vae
+from vae.data.vae_dataset import load_vae_training_points
+from vae.utils.config import load_dataset_config
 from node.training.node_train import train_node_energy_goal_imitation_riemannianmse_optuna  # Ensure trial=None is in this fn def
 
 
@@ -116,13 +118,15 @@ if __name__ == "__main__":
     dataset_shape = args.shape + '-Shape'
     vae_cfg['training_artifacts']['model_path'] = vae_cfg['training_artifacts']['model_path'].replace('{shape}',
                                                                                                       dataset_shape)
+    vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
     # Pass the VAE config
     total_dof = vae_cfg['architecture']['pos_dof'] + vae_cfg['architecture']['qua_dof']
-    dummy_data = torch.randn(100, total_dof)
+    # dummy_data = torch.randn(100, total_dof)
+    training_points = load_vae_training_points(load_dataset_config(args.dataset, args.shape))
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Initialize the VAE once and pass it to the objective
-    vae = load_pretrained_vae(vae_cfg, dummy_data).to(device)
+    vae = load_pretrained_vae(vae_cfg, training_points).to(device)
     vae.eval()  # Keep it in eval mode
 
     # 2. Load Base NODE Config
