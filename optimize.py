@@ -56,7 +56,7 @@ def objective(trial, base_node_cfg, vae, device):
 
     # D. Prepare Datasets
     # We call this inside the objective because batch_size might have changed
-    save_dir = build_dataset_offline(node_cfg, vae, device='cpu')
+    save_dir = build_dataset_offline(node_cfg, vae.cpu(), device='cpu')
     train_loader, val_loader, test_loader = prepare_loaders(
         save_dir,
         batch_size=node_cfg['training']['batch_size'],
