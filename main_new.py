@@ -14,7 +14,7 @@ from vae.vae_model import load_pretrained_vae
 from vae.data.vae_dataset import load_vae_training_points
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
-from node.training.node_train import train_node_energy_goal_imitation_riemannianmse
+from node.training.node_training_new import train_node_energy_goal_imitation_embedded
 from node.utils.logger import ConsoleLogger  # (or wherever you saved it)
 from node.evaluation.node_test import load_trained_node, test_node
 
@@ -215,7 +215,7 @@ def main():
 
         print("\n🚀 Launching NODE Training...")
 
-        trained_model, history = train_node_energy_goal_imitation_riemannianmse(
+        trained_model, history = train_node_energy_goal_imitation_embedded(
             model=model,
             vae=vae,
             train_loader=train_loader,

@@ -8,12 +8,22 @@ from vae.vae_model import get_M
 
 # --- SCHEDULER based on Epochs ---
 def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_length=2500,
-                                   w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0):
+                                   w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0,
+                                   enabled=True):
     """
     base_scale: The normalization factor to counteract the massive size
     of the metric tensor G. If your clamped G peaks around 1e4, base_scale
     should be around 1e-4 so the total loss stays close to 1.0.
+    enabled: If False, skip the ramp and use the target weights from epoch 0.
     """
+
+    # Constant weights (no scheduling): ramp_start, ramp_length and w_goal_start are ignored
+    if not enabled:
+        return {
+            "w_imit": w_imit_target * base_scale,
+            "w_goal": w_goal_target * base_scale,
+            "w_ener": w_ener_target
+        }
 
     # Stage 1: Local Flow
     # The model learns the raw paths with no goal pressure or energy tension.
@@ -65,6 +75,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     w_goal_start = sched_cfg.get('w_goal_start', 1.0)
     w_goal_target = sched_cfg.get('w_goal_target', 50.0)
     w_ener_target = sched_cfg.get('w_ener_target', 1.0)
+    sched_enabled = sched_cfg.get('enabled', True)
     # Generate dynamic names based on the shape
     model_name = node_cfg['dataset']['model_name']
 
@@ -102,7 +113,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
 
         w = get_loss_weights_riemannianmse(
             epoch, base_scale, ramp_start, ramp_length,
-            w_imit_target, w_goal_start, w_goal_target, w_ener_target
+            w_imit_target, w_goal_start, w_goal_target, w_ener_target, sched_enabled
         )
         w_imitation, w_goal, w_energy = w['w_imit'], w['w_goal'], w['w_ener']
 
@@ -245,12 +256,11 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
             euclid_gap = abs(avg_train_euclid - avg_val_euclid)
             print(f"{'✅' if euclid_gap < 0.10 else '🟡' if euclid_gap < 0.30 else '⚠️'} Euclid Gap: {euclid_gap:.5f}")
 
-            if w_energy > 0:
-                with torch.no_grad():
-                    #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
-                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
-            else:
-                mean_density = 0.0
+            # Always report density (J_val_pred comes from validation), so off-manifold drift
+            # is visible even when the energy loss is disabled
+            with torch.no_grad():
+                #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
 
             relative_cost = mean_density / SAFE_BASELINE
 

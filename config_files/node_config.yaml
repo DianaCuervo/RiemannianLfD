@@ -75,6 +75,8 @@ lasa:
     model_test_results_dir: './node/evaluation/results/'
   # --- SHAPE SPECIFIC HYPERPARAMETERS ---
   N:
+    # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
@@ -87,22 +89,20 @@ lasa:
     training:
       learning_rate: 1.0e-4 #6.67e-4-->Optuna
       lr_gamma: 0.1
-      lr_drop_fraction: 0.83
+      lr_drop_fraction: 0.75        # LR drop at epoch 750
       batch_size: 32
-      epochs: 3000
-      metric_scale_energy: 'metric_scale_energy_dummy'
-      safe_baseline: 'safe_baseline_dummy'
+      epochs: 2000                 # Imitation-only converges by ~500 epochs (no ramp to wait for)
+      metric_scale_energy: 'metric_scale_energy_dummy'  # Only used for the (logged) validation energy
+      safe_baseline: 'safe_baseline_dummy'              # Only used for the density readout
       metric_clamp_max: 1e6         # Centralized metric ceiling
       metric_clamp_min: 1e-6        # Centralized metric ceiling
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
-        base_scale: 1 #0.0001   # The shrink ray
-        ramp_start: 500      # Epoch when goal/energy pressure begins
-        ramp_length: 1500    # How many epochs it takes to reach max weight
-        w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 0.0    # What goal weight starts at when ramp begins
-        w_goal_target: 0.0  # What goal weight ramps up to
-        w_ener_target: 0.0   # What energy weight ramps up to
+        enabled: false         # No ramp: constant weights from epoch 0 (energy + goal only)
+        base_scale: 1        # Global multiplier for imitation and goal weights
+        w_imit_target: 0.0   # Imitation disabled (still logged)   [imitation_only: 1.0]
+        w_goal_target: 5.0   # Constant goal weight, same as imitation_only for a fair comparison
+        w_ener_target: 1.0e-3  # Constant energy weight (tuning knob) [imitation_only: 0.0]
   Angle:
     # Model Architecture Parameters
     architecture:
