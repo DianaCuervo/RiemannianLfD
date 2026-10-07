@@ -2,27 +2,33 @@ import torch
 import torch.optim as optim
 import time
 import os
+import numpy as np
 
 from vae.vae_model import get_M
 
+# --- ENERGY in the embedding space (stochman's EmbeddedManifold.curve_energy strategy) ---
+def embedded_curve_energy(vae, z_traj):
+    """
+    Discrete curve energy measured after decoding the curve:
+        E = (T-1) * sum_t ||f(z_{t+1}) - f(z_t)||^2  ~=  mean_t v_t^T M(z_t) v_t
+    The gradient flows through the decoder f, so it contains dM/dz.
+    z_traj: [T, B, D] latent trajectory. Returns the energy per curve, shape [B].
+    """
+    T_steps, B, D = z_traj.shape
+    # vae.embed only supports a leading batch of 1 (as in get_M): embed all B*T points at once, then split curves
+    points = z_traj.permute(1, 0, 2).reshape(1, B * T_steps, D)
+    emb = vae.embed(points).reshape(B, T_steps, -1)  # BxTxK
+    delta = emb[:, 1:, :] - emb[:, :-1, :]  # Bx(T-1)xK
+    return (delta ** 2).sum(dim=(1, 2)) * (T_steps - 1)
+
 # --- SCHEDULER based on Epochs ---
 def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_length=2500,
-                                   w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0,
-                                   enabled=True):
+                                   w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0):
     """
     base_scale: The normalization factor to counteract the massive size
     of the metric tensor G. If your clamped G peaks around 1e4, base_scale
     should be around 1e-4 so the total loss stays close to 1.0.
-    enabled: If False, skip the ramp and use the target weights from epoch 0.
     """
-
-    # Constant weights (no scheduling): ramp_start, ramp_length and w_goal_start are ignored
-    if not enabled:
-        return {
-            "w_imit": w_imit_target * base_scale,
-            "w_goal": w_goal_target * base_scale,
-            "w_ener": w_ener_target
-        }
 
     # Stage 1: Local Flow
     # The model learns the raw paths with no goal pressure or energy tension.
@@ -51,27 +57,8 @@ def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_
             "w_ener": w_ener_target * alpha
        }
 
-# --- ENERGY in the embedding space (stochman's EmbeddedManifold.curve_energy strategy) ---
-def embedded_curve_energy(vae, z_traj):
-    """
-    Discrete curve energy measured after decoding the curve:
-        E = (T-1) * sum_t ||f(z_{t+1}) - f(z_t)||^2  ~=  mean_t v_t^T M(z_t) v_t
-
-    Unlike ||J(z) v||^2 with J computed under no_grad, the gradient flows through the decoder f,
-    so it contains dM/dz and pulls the curve towards low-metric regions (true geodesic energy).
-    No Jacobian or second derivatives are needed: one decoder forward and backward pass.
-
-    z_traj: [T, B, D] latent trajectory. Returns the energy per curve, shape [B].
-    """
-    T_steps, B, D = z_traj.shape
-    # vae.embed only supports a leading batch of 1 (as in get_M): embed all B*T points at once, then split curves
-    points = z_traj.permute(1, 0, 2).reshape(1, B * T_steps, D)
-    emb = vae.embed(points).reshape(B, T_steps, -1)  # BxTxK
-    delta = emb[:, 1:, :] - emb[:, :-1, :]  # Bx(T-1)xK
-    return (delta ** 2).sum(dim=(1, 2)) * (T_steps - 1)
-
-# --- Training Loop with the Riemannian MSE + Embedded (decoder) Energy Strategy
-def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_loader, node_cfg, device='cpu'):
+# --- Training Loop with the Riemannian MSE (Matching the Target Sequence) Strategy
+def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val_loader, node_cfg, device='cpu'):
     # --- 1. Dynamic Config Extraction ---
     METRIC_SCALE_ENERGY = node_cfg['training']['metric_scale_energy']
     SAFE_BASELINE = node_cfg['training']['safe_baseline']
@@ -79,6 +66,9 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
     lr_gamma = node_cfg['training'].get('lr_gamma', 1e-1)
     drop_fraction = node_cfg['training'].get('lr_drop_fraction', 0.35)
     epochs = node_cfg['training'].get('epochs', 4000)
+    # Extract countermeasures parameters against exploding energy
+    #clamp_min = float(node_cfg["training"]["metric_clamp_min"])
+    #clamp_max = float(node_cfg["training"]["metric_clamp_max"])
     clip_norm = node_cfg["training"]["grad_clip_norm"]
     # Extract scheduler variables
     sched_cfg = node_cfg['training'].get('scheduler', {})
@@ -90,7 +80,13 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
     w_goal_start = sched_cfg.get('w_goal_start', 1.0)
     w_goal_target = sched_cfg.get('w_goal_target', 50.0)
     w_ener_target = sched_cfg.get('w_ener_target', 1.0)
-    sched_enabled = sched_cfg.get('enabled', True)
+    # run_suffix adjustments: energy_only -> no imitation, losses active from epoch 0; imitation_only -> no energy
+    run_suffix = node_cfg.get('run_suffix')
+    if run_suffix == 'energy_only':
+        w_imit_target = 0.0
+        ramp_start = 0
+    elif run_suffix == 'imitation_only':
+        w_ener_target = 0.0
     # Generate dynamic names based on the shape
     model_name = node_cfg['dataset']['model_name']
 
@@ -100,19 +96,17 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
 
     # --- 2. Setup Optimizer & Schedulers ---
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    # Frozen VAE: eval mode (BatchNorm running stats) and no gradients accumulated in its weights,
-    # but gradients still flow through it to the NODE trajectory for the energy term
     vae.to(device).eval()
     vae.requires_grad_(False)
     model.to(device)
 
-    # Dynamic milestone: Drop LR at drop_fraction of total epochs
+    # Dynamic milestone: Drop LR at 35% of total epochs
     drop_epoch = int(epochs * drop_fraction)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[drop_epoch], gamma=lr_gamma)
 
     start_time = time.time()
     print(f"\n{'=' * 140}")
-    print(f"Starting Training (embedded energy): {model_name} on {device.upper()}")
+    print(f"Starting Training: {model_name} on {device.upper()}")
     print(f"Epochs: {epochs} | Initial LR: {lr} | LR Drop at: {drop_epoch}")
     print(f"{'=' * 140}\n")
 
@@ -131,7 +125,7 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
 
         w = get_loss_weights_riemannianmse(
             epoch, base_scale, ramp_start, ramp_length,
-            w_imit_target, w_goal_start, w_goal_target, w_ener_target, sched_enabled
+            w_imit_target, w_goal_start, w_goal_target, w_ener_target
         )
         w_imitation, w_goal, w_energy = w['w_imit'], w['w_goal'], w['w_ener']
 
@@ -148,23 +142,29 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
             t_steps = torch.linspace(0, 1, T_steps).to(device)
             pred_traj = model(p1, p2, t_steps)
             z_pred = pred_traj[:, :, 0, :]
+            v_pred = pred_traj[:, :, 1, :]
             y_pred = z_pred.permute(1, 0, 2)
 
             # LOSS CALCULATION
-            # --- IMITATION LOSS --- (metric at the fixed targets: no gradient through J needed)
+            # --- IMITATION LOSS ---
             with torch.no_grad():
+                # Get J (index 1) instead of G (index 2)
                 _, J_raw_true, _ = get_M(vae, z_target.reshape(-1, D).clone())
                 J_raw_true = torch.as_tensor(J_raw_true, dtype=torch.float32, device=device)
+                # FIX: Use -1 so PyTorch automatically calculates the embedding dimension K
                 J_true = J_raw_true.reshape(B, T_steps, -1, D)
 
             delta_imit = y_pred - z_target
+            # Matrix-Vector product: J @ delta
             J_delta_imit = torch.einsum('bnkd,bnd->bnk', J_true, delta_imit)
+            # Squared norm: ||J * delta||^2
             loss_imitation = torch.mean(torch.sum(J_delta_imit ** 2, dim=-1))
 
             euclidean_imit = torch.mean((y_pred.detach() - z_target) ** 2).item()
 
-            # --- ENERGY LOSS --- (gradient flows through the decoder, i.e. through M(z))
+            # --- ENERGY LOSS ---
             if w_energy > 0:
+                # Embedded energy: gradient flows through the decoder, i.e. through M(z)
                 loss_energy = embedded_curve_energy(vae, z_pred).mean() * METRIC_SCALE_ENERGY
             else:
                 loss_energy = torch.tensor(0.0).to(device)
@@ -174,9 +174,11 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
             with torch.no_grad():
                 _, J_raw_goal, _ = get_M(vae, p2.clone())
                 J_raw_goal = torch.as_tensor(J_raw_goal, dtype=torch.float32, device=device)
+                # FIX: Use -1
                 J_goal = J_raw_goal.reshape(B, -1, D)
 
             delta_goal = pred_goal - p2
+            # J @ delta
             J_delta_goal = torch.einsum('bkd,bd->bk', J_goal, delta_goal)
             loss_goal = torch.mean(torch.sum(J_delta_goal ** 2, dim=-1))
 
@@ -196,7 +198,6 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
         if (epoch == 0 or (epoch + 1) % 50 == 0 or epoch == epochs - 1):
             model.eval()
             val_imit, val_ener, val_goal, val_euclidean_imit = 0.0, 0.0, 0.0, 0.0
-            val_density, n_val_points = 0.0, 0
 
             with torch.no_grad():
                 for p1, p2, z_target in val_loader:
@@ -205,7 +206,7 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
 
                     t_steps = torch.linspace(0, 1, T_val).to(device)
                     pred_traj = model(p1, p2, t_steps)
-                    z_pred = pred_traj[:, :, 0, :]
+                    z_pred, v_pred = pred_traj[:, :, 0, :], pred_traj[:, :, 1, :]
                     y_pred_val = z_pred.permute(1, 0, 2)
 
                     # Validation Imitation
@@ -219,14 +220,12 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
 
                     val_euclidean_imit += torch.mean((y_pred_val - z_target) ** 2).item()
 
-                    # Validation Energy (same embedded energy as training)
-                    val_ener += embedded_curve_energy(vae, z_pred).mean().item() * METRIC_SCALE_ENERGY
-
-                    # Density along the predicted paths (trace(M)/2), averaged over the whole validation set
+                    # Validation Energy
                     _, J_raw_val_pred, _ = get_M(vae, z_pred.reshape(-1, D_val).clone())
                     J_raw_val_pred = torch.as_tensor(J_raw_val_pred, dtype=torch.float32, device=device)
-                    val_density += (J_raw_val_pred ** 2).sum(dim=(-2, -1)).sum().item() / 2.0
-                    n_val_points += J_raw_val_pred.shape[0]
+                    J_val_pred = J_raw_val_pred.reshape(T_val, B_val, -1, D_val)
+
+                    val_ener += embedded_curve_energy(vae, z_pred).mean().item() * METRIC_SCALE_ENERGY
 
                     # Validation Goal
                     _, J_raw_val_goal, _ = get_M(vae, p2.clone())
@@ -259,7 +258,13 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
             euclid_gap = abs(avg_train_euclid - avg_val_euclid)
             print(f"{'✅' if euclid_gap < 0.10 else '🟡' if euclid_gap < 0.30 else '⚠️'} Euclid Gap: {euclid_gap:.5f}")
 
-            mean_density = val_density / max(n_val_points, 1)
+            if w_energy > 0:
+                with torch.no_grad():
+                    #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
+            else:
+                mean_density = 0.0
+
             relative_cost = mean_density / SAFE_BASELINE
 
             print(
@@ -278,6 +283,9 @@ def train_node_energy_goal_imitation_embedded(model, vae, train_loader, val_load
 
     end_time = time.time()
     print(f"Training Complete in {(end_time - start_time) / 60:.2f} minutes.")
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, f"{model_name}.pth")
     torch.save(model.state_dict(), save_path)

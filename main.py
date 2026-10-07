@@ -112,12 +112,6 @@ def main():
         full_name = f"{dataset_type}_{dataset_task}_"
         model_name = model_name_template.replace('{task}', full_name)
 
-    # Optional suffix to keep different loss setups apart (e.g. 'imitation_only'):
-    # applies to the saved model, training log/curves and test results folder
-    run_suffix = node_cfg.get('run_suffix')
-    if run_suffix:
-        model_name = f"{model_name}_{run_suffix}"
-
     node_cfg['dataset']['model_name'] = model_name
 
     # Log Initialization
