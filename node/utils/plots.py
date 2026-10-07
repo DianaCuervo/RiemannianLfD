@@ -448,7 +448,9 @@ def visualize_path_comparison(model, vae, test_loader, space_name, latent_frame,
     #print("z_target shape: " + str( z_target.shape))
 
     with torch.no_grad():
-        pred_traj = model(p1, p2, t_steps)
+        #pred_traj = model(p1, p2, t_steps)
+        model_device = next(model.parameters()).device
+        pred_traj = model(p1.to(model_device), p2.to(model_device), t_steps.to(model_device))
         z_pred = pred_traj[:, :, 0, :].cpu().numpy()  # [T, num_samples, 2]
 
     #print("z_pred shape: " + str( z_pred.shape))
@@ -529,7 +531,9 @@ def visualize_random_points_comparison(model, vae, test_loader, space_name, late
 
     # 2. Run the NODE
     with torch.no_grad():
-        prediction = model(p1_test, p2_test, t_steps)
+        #prediction = model(p1_test, p2_test, t_steps)
+        model_device = next(model.parameters()).device
+        prediction = model(p1_test.to(model_device), p2_test.to(model_device), t_steps.to(model_device))
         z_path = prediction[:, :, 0].cpu().numpy()  # Shape [500, 1, 2]
 
     # 3. Convert to numpy for plotting

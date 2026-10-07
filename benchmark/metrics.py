@@ -20,7 +20,8 @@ def decode_latente_paths(vae_model, latent_paths):
             # Fallback if they are raw NumPy arrays
             latent_paths = torch.as_tensor(np.stack(latent_paths), dtype=torch.float32)
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = next(vae_model.parameters()).device  # Use the same device as the VAE model
     batch_size, time_steps, latent_dim = latent_paths.shape
     # Flatten everything: [2500, 2]
     z_flat = torch.as_tensor(latent_paths, dtype=torch.float32).to(device).reshape(-1, latent_dim)
@@ -76,7 +77,8 @@ def decode_latent_goals(vae_model, latent_goals):
     Returns:
         real_space_goals: NumPy array of shape [N, RealSpaceDim] (e.g., [N, 5] or [N, 7])
     """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = next(vae_model.parameters()).device  # Use the same device as the VAE model
     # 1. Safely handle input types (list vs. raw tensor) and push to device
     if isinstance(latent_goals, list):
         z_flat = torch.stack([torch.as_tensor(g, dtype=torch.float32) for g in latent_goals]).to(device)

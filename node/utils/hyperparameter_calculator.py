@@ -4,7 +4,7 @@ from vae.vae_model import get_M
 def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
     """
     Calculates the Riemannian Ground Density and Path Energy
-    from a list of RAW, unsegmented encoded human demonstrations.
+    from a list of RAW, unsegmented encoded human demonstrations using ||Jv||^2.
     """
     vae.eval()
     vae.to(device)
@@ -21,21 +21,28 @@ def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
             z_raw = path.to(device)
             T, D = z_raw.shape
 
-            G_raw = get_M(vae, z_raw.clone())[2]
-            if not isinstance(G_raw, torch.Tensor):
-                G_raw = torch.tensor(G_raw, dtype=torch.float32)
+            # 1. Get raw Jacobian J (index 1) instead of G
+            _, J_raw, _ = get_M(vae, z_raw.clone())
+            J_raw = torch.as_tensor(J_raw, dtype=torch.float32, device=device)
 
-            G = torch.clamp(G_raw.clone().detach(), min=1e-3, max=1e6).to(device)
+            # Dynamically handle shape: J_raw can be (T, K, D) or (B*T, K, D)
+            K = J_raw.shape[-2]
+            J = J_raw.reshape(T, K, D)
 
-            metric_trace = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1)
-            total_density += metric_trace.sum().item() / 2.0
+            # Density from J: Trace of G (sum of squared elements of J) / 2
+            point_density = torch.sum(J ** 2, dim=(-2, -1)) / 2.0
+            total_density += point_density.sum().item()
             total_points += T
 
+            # 2. Velocity
             dt = 1.0 / (T - 1) if T > 1 else 1.0
             v_raw = (z_raw[1:, :] - z_raw[:-1, :]) / dt
-            G_mid = G[:-1, :, :]
+            J_mid = J[:-1, :, :]  # Midpoints for velocity steps
 
-            energy_step = torch.einsum('ti, tij, tj -> t', v_raw, G_mid, v_raw)
+            # 3. Energy using ||Jv||^2
+            Jv = torch.einsum('tkd,td->tk', J_mid, v_raw)
+            energy_step = torch.sum(Jv ** 2, dim=-1)
+
             total_energy += energy_step.sum().item()
             total_steps += (T - 1)
 
@@ -53,4 +60,3 @@ def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
     print(f"{'=' * 60}\n")
 
     return safe_baseline, recommended_scale
-

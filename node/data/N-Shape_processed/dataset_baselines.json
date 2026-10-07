@@ -1,4 +1,9 @@
 {
+<<<<<<< HEAD
     "safe_baseline": 0.0034234100920813425,
     "metric_scale_energy": 0.030521429881682126
+=======
+    "safe_baseline": 0.11208581365857806,
+    "metric_scale_energy": 0.0056716518686067315
+>>>>>>> node-training
 }

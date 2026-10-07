@@ -6,7 +6,6 @@ import numpy as np
 
 from vae.vae_model import get_M
 
-
 # --- SCHEDULER based on Epochs ---
 def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_length=2500,
                                    w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0):
@@ -53,8 +52,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
     drop_fraction = node_cfg['training'].get('lr_drop_fraction', 0.35)
     epochs = node_cfg['training'].get('epochs', 4000)
     # Extract countermeasures parameters against exploding energy
-    clamp_min = float(node_cfg["training"]["metric_clamp_min"])
-    clamp_max = float(node_cfg["training"]["metric_clamp_max"])
+    #clamp_min = float(node_cfg["training"]["metric_clamp_min"])
+    #clamp_max = float(node_cfg["training"]["metric_clamp_max"])
     clip_norm = node_cfg["training"]["grad_clip_norm"]
     # Extract scheduler variables
     sched_cfg = node_cfg['training'].get('scheduler', {})
@@ -124,42 +123,50 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
             y_pred = z_pred.permute(1, 0, 2)
 
             # LOSS CALCULATION
+            # --- IMITATION LOSS ---
             with torch.no_grad():
-                G_raw_true = get_M(vae, z_target.reshape(-1, D).clone())[2]
-                # FIX: Removed torch.tensor() to prevent warnings, using clone().detach() instead
-                if not isinstance(G_raw_true, torch.Tensor):
-                    G_raw_true = torch.tensor(G_raw_true, dtype=torch.float32)
-                G_true_clamped = torch.clamp(G_raw_true.clone().detach(), min=clamp_min, max=clamp_max).to(device)
-                G_true = G_true_clamped.reshape(B, T_steps, D, D)
+                # Get J (index 1) instead of G (index 2)
+                _, J_raw_true, _ = get_M(vae, z_target.reshape(-1, D).clone())
+                J_raw_true = torch.as_tensor(J_raw_true, dtype=torch.float32, device=device)
+                # FIX: Use -1 so PyTorch automatically calculates the embedding dimension K
+                J_true = J_raw_true.reshape(B, T_steps, -1, D)
 
             delta_imit = y_pred - z_target
-            squared_riem_dist = torch.einsum('bni,bnij,bnj->bn', delta_imit, G_true, delta_imit)
-            loss_imitation = torch.mean(squared_riem_dist)
+            # Matrix-Vector product: J @ delta
+            J_delta_imit = torch.einsum('bnkd,bnd->bnk', J_true, delta_imit)
+            # Squared norm: ||J * delta||^2
+            loss_imitation = torch.mean(torch.sum(J_delta_imit ** 2, dim=-1))
 
             euclidean_imit = torch.mean((y_pred.detach() - z_target) ** 2).item()
 
+            # --- ENERGY LOSS ---
             if w_energy > 0:
-                G_raw = get_M(vae, (z_pred.reshape(-1, D)).clone())[2]
-                if not isinstance(G_raw, torch.Tensor):
-                    G_raw = torch.tensor(G_raw, dtype=torch.float32)
-                G_clamped = torch.clamp(G_raw.clone().detach(), min=clamp_min, max=clamp_max).to(device)
-                G = G_clamped.reshape(T_steps, B, D, D)
+                with torch.no_grad():
+                    _, J_raw, _ = get_M(vae, z_pred.reshape(-1, D).clone())
+                    J_raw = torch.as_tensor(J_raw, dtype=torch.float32, device=device)
+                    # FIX: Use -1
+                    J_pred = J_raw.reshape(T_steps, B, -1, D)
 
-                energy_per_step = torch.einsum('tb i, tb ij, tb j -> tb', v_pred, G, v_pred)
+                # J @ v
+                J_v_pred = torch.einsum('tbkd,tbd->tbk', J_pred, v_pred)
+                # ||Jv||^2
+                energy_per_step = torch.sum(J_v_pred ** 2, dim=-1)
                 loss_energy = energy_per_step.mean() * METRIC_SCALE_ENERGY
             else:
                 loss_energy = torch.tensor(0.0).to(device)
 
+            # --- GOAL LOSS ---
             pred_goal = z_pred[-1]
             with torch.no_grad():
-                G_raw_goal = get_M(vae, p2.clone())[2]
-                if not isinstance(G_raw_goal, torch.Tensor):
-                    G_raw_goal = torch.tensor(G_raw_goal, dtype=torch.float32)
-                G_goal_clamped = torch.clamp(G_raw_goal.clone().detach(), min=clamp_min, max=clamp_max).to(device)
-                G_goal = G_goal_clamped.reshape(B, D, D)
+                _, J_raw_goal, _ = get_M(vae, p2.clone())
+                J_raw_goal = torch.as_tensor(J_raw_goal, dtype=torch.float32, device=device)
+                # FIX: Use -1
+                J_goal = J_raw_goal.reshape(B, -1, D)
 
             delta_goal = pred_goal - p2
-            loss_goal = torch.mean(torch.einsum('bi,bij,bj->b', delta_goal, G_goal, delta_goal))
+            # J @ delta
+            J_delta_goal = torch.einsum('bkd,bd->bk', J_goal, delta_goal)
+            loss_goal = torch.mean(torch.sum(J_delta_goal ** 2, dim=-1))
 
             total_loss = (w_imitation * loss_imitation) + (w_goal * loss_goal) + (w_energy * loss_energy)
 
@@ -189,34 +196,32 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
                     y_pred_val = z_pred.permute(1, 0, 2)
 
                     # Validation Imitation
-                    G_raw_val_true = get_M(vae, z_target.reshape(-1, D_val).clone())[2]
-                    if not isinstance(G_raw_val_true, torch.Tensor):
-                        G_raw_val_true = torch.tensor(G_raw_val_true, dtype=torch.float32)
-                    G_val_true = torch.clamp(G_raw_val_true.clone().detach(), min=clamp_min, max=clamp_max).to(device).reshape(B_val, T_val,
-                                                                                                          D_val, D_val)
+                    _, J_raw_val_true, _ = get_M(vae, z_target.reshape(-1, D_val).clone())
+                    J_raw_val_true = torch.as_tensor(J_raw_val_true, dtype=torch.float32, device=device)
+                    J_val_true = J_raw_val_true.reshape(B_val, T_val, -1, D_val)
+
                     del_val_imit = y_pred_val - z_target
-                    val_imit += torch.mean(
-                        torch.einsum('bni,bnij,bnj->bn', del_val_imit, G_val_true, del_val_imit)).item()
+                    J_del_val_imit = torch.einsum('bnkd,bnd->bnk', J_val_true, del_val_imit)
+                    val_imit += torch.mean(torch.sum(J_del_val_imit ** 2, dim=-1)).item()
+
                     val_euclidean_imit += torch.mean((y_pred_val - z_target) ** 2).item()
 
                     # Validation Energy
-                    G_raw_val_pred = get_M(vae, z_pred.reshape(-1, D_val).clone())[2]
-                    if not isinstance(G_raw_val_pred, torch.Tensor):
-                        G_raw_val_pred = torch.tensor(G_raw_val_pred, dtype=torch.float32)
-                    G_val_pred = torch.clamp(G_raw_val_pred.clone().detach(), min=clamp_min, max=clamp_max).to(
-                        device).reshape(T_val, B_val, D_val, D_val)
+                    _, J_raw_val_pred, _ = get_M(vae, z_pred.reshape(-1, D_val).clone())
+                    J_raw_val_pred = torch.as_tensor(J_raw_val_pred, dtype=torch.float32, device=device)
+                    J_val_pred = J_raw_val_pred.reshape(T_val, B_val, -1, D_val)
 
-                    val_ener += (torch.einsum('tb i, tb ij, tb j -> tb', v_pred, G_val_pred,
-                                              v_pred).mean().item()) * METRIC_SCALE_ENERGY
+                    J_v_val_pred = torch.einsum('tbkd,tbd->tbk', J_val_pred, v_pred)
+                    val_ener += (torch.sum(J_v_val_pred ** 2, dim=-1).mean().item()) * METRIC_SCALE_ENERGY
 
                     # Validation Goal
-                    G_raw_val_goal = get_M(vae, p2.clone())[2]
-                    if not isinstance(G_raw_val_goal, torch.Tensor):
-                        G_raw_val_goal = torch.tensor(G_raw_val_goal, dtype=torch.float32)
-                    G_val_goal = torch.clamp(G_raw_val_goal.clone().detach(), min=clamp_min, max=clamp_max).to(device).reshape(B_val, D_val,
-                                                                                                          D_val)
+                    _, J_raw_val_goal, _ = get_M(vae, p2.clone())
+                    J_raw_val_goal = torch.as_tensor(J_raw_val_goal, dtype=torch.float32, device=device)
+                    J_val_goal = J_raw_val_goal.reshape(B_val, -1, D_val)
+
                     del_val_goal = z_pred[-1] - p2
-                    val_goal += torch.mean(torch.einsum('bi,bij,bj->b', del_val_goal, G_val_goal, del_val_goal)).item()
+                    J_del_val_goal = torch.einsum('bkd,bd->bk', J_val_goal, del_val_goal)
+                    val_goal += torch.mean(torch.sum(J_del_val_goal ** 2, dim=-1)).item()
 
                 n_val = max(len(val_loader), 1)
                 avg_val_imit = val_imit / n_val
@@ -242,7 +247,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
 
             if w_energy > 0:
                 with torch.no_grad():
-                    mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                    #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
+                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
             else:
                 mean_density = 0.0
 
@@ -269,7 +275,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
         os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, f"{model_name}.pth")
-    torch.save(model.state_dict(), save_path)
+    # torch.save(model.state_dict(), save_path)
+    torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, save_path)
     print(f"✅ Model saved dynamically to {save_path}")
 
     return model, history
@@ -500,7 +507,7 @@ def train_node_energy_goal_imitation_riemannianmse_optuna(model, vae, train_load
         os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, f"{model_name}.pth")
-    torch.save(model.state_dict(), save_path)
+    torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, save_path)
     print(f"✅ Model saved dynamically to {save_path}")
 
     return model, history
