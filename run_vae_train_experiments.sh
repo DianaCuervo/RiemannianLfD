@@ -12,9 +12,9 @@ run_dataset() {
         echo "================================================================="
 
         # python vae_main.py --mode train --dataset $dataset --shape $shape --overwrite
-        # python vae_main.py --mode test --dataset $dataset --shape $shape --num_segments 0 --test_id 3
+        python vae_main.py --mode test --dataset $dataset --shape $shape --num_segments 0 --test_id 3
         # python run_benchmark.py --framework stochman --dataset lasa --shape $shape
-        python vae_main.py --mode visualize --dataset $dataset --shape $shape
+        # python vae_main.py --mode visualize --dataset $dataset --shape $shape
 
         echo "✅ Finished training for $dataset - $shape!"
         echo ""
@@ -24,7 +24,8 @@ run_dataset() {
 # ---------------------------------------------------------
 # 1. Define shapes for LASA
 # ---------------------------------------------------------
-LASA_SHAPES=("Angle" "P" "Leaf_1")
+# LASA_SHAPES=("Angle" "P" "Leaf_1")
+LASA_SHAPES=("N" "Sine")
 
 # LASA_SHAPES=("P")
 # TASKS=("pick" "place")
