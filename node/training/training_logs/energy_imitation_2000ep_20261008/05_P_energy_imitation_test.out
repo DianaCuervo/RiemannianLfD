@@ -1,0 +1,72 @@
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:488: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[i, :, 0], z_target[i, :, 1], 'k--', label='Robot Demo', alpha=0.6, color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:491: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "b-" (-> color='b'). The keyword argument will take precedence.
+  plt.plot(z_pred[:, i, 0], z_pred[:, i, 1], 'b-', linewidth=2, label='NODE Path', color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:554: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[:, 0].detach().numpy(), z_target[:, 1].detach().numpy(), 'k--', label='Robot Demo', alpha=0.6, color='black')
+Hello world!
+
+--- Completing Configuration ---
+Starting run for Dataset: LASA | Shape: P
+Loading VAE from: ./models/vae/lasa/VAE_P-Shape.pt
+
+📝 Log file generated! Saving all output to: ./node/training/training_logs/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation_Log_20261008_124952.txt
+
+
+--- Initializing Models ---
+Length Trajectory: 1000
+Length Trajectories: 14
+Trajectories euclidian dimension: 7
+Trajectory 0: [-0.60905322 -1.          0.          0.96460774 -0.17043398 -0.20120678
+  0.        ]
+Trajectory: [-0.60905322 -1.          0.         -0.96460774  0.17043398  0.20120678
+ -0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.          0.96303179 -0.19400167 -0.18690405
+  0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.         -0.96303179  0.19400167  0.18690405
+ -0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.          0.95877584 -0.20789628 -0.19372153
+  0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.         -0.95877584  0.20789628  0.19372153
+ -0.        ]
+Trajectory 6: [-0.7998161  -0.9141567   0.          0.95942105 -0.21739377 -0.17958616
+  0.        ]
+Trajectory 7: [-0.7998161  -0.9141567   0.         -0.95942105  0.21739377  0.17958616
+ -0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.          0.96701581 -0.18478748 -0.1753112
+  0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.         -0.96701581  0.18478748  0.1753112
+ -0.        ]
+Trajectory: [-0.86658311 -0.85692784  0.          0.95811662 -0.23383091 -0.16533499
+  0.        ]
+Total # of Trajectories: 14
+RBF beta = 0.1353 (from checkpoint)
+✅ Successfully loaded VAE from ./models/vae/lasa/VAE_P-Shape.pt
+VAE Model initialized with DOF=7
+NODE Model initialized with latent_dim=2 and hidden_dim=512
+
+--- Preparing Datasets ---
+Dataset already exists at ./node/data/P-Shape_processed. Skipping preprocessing.
+✅ Dataset Loaded from ./node/data/P-Shape_processed | Train: 540 | Val: 60 | Test: 100
+Successfully loaded model from ./models/node/lasa/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation.pth
+
+--- Starting Testing & Visualizations ---
+Generating Manifold Visualization...
+Printing Riemannian Manifold...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation/P-shape Manifold.svg
+Generating Path Comparisons...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation/5-Path Comparisons.svg
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation/30-Path Comparisons.svg
+Generating Random Points Comparison...
+Testing with random point in test set...
+Random index: 5
+Start point: tensor([-9.3316,  0.1633], grad_fn=<SelectBackward0>)
+Goal point: tensor([ 3.4908, -8.2103], grad_fn=<SelectBackward0>)
+Goal path shape: torch.Size([50, 2])
+Start X point pred: -9.331562
+Start Y point pred: 0.16325861
+Predicted path goal: (3.3727007, -8.198904)
+Successful.
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_imitation/Trajectory with random start-end point.svg
+✅ Testing complete!
+Bye bye!

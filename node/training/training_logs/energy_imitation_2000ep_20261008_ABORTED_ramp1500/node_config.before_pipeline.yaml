@@ -100,7 +100,7 @@ lasa:
       scheduler:
         base_scale: 1 #0.0001   # The shrink ray
         ramp_start: 500      # Epoch when goal/energy pressure begins
-        ramp_length: 1000    # How many epochs it takes to reach max weight
+        ramp_length: 1500    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 1.0    # What goal weight starts at when ramp begins
         w_goal_target: 100.0  # What goal weight ramps up to
@@ -131,11 +131,11 @@ lasa:
       scheduler:
         base_scale: 1.0         # Global multiplier for imitation and goal weights
         ramp_start: 500          # Epoch when goal/energy pressure begins
-        ramp_length: 1000         # How many epochs it takes to reach max weight
+        ramp_length: 1500         # How many epochs it takes to reach max weight
         w_imit_target: 1.0      # Constant multiplier for imitation
         w_goal_start: 5.0        # What goal weight starts at when ramp begins
         w_goal_target: 5.0      # What goal weight ramps up to
-        w_ener_target: 0.1      # What energy weight ramps up to
+        w_ener_target: 1.0e-3   # What energy weight ramps up to
   P:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
@@ -162,11 +162,11 @@ lasa:
       scheduler:
         base_scale: 1.0         # The shrink ray
         ramp_start: 500          # Epoch when goal/energy pressure begins
-        ramp_length: 1000         # How many epochs it takes to reach max weight
+        ramp_length: 1500         # How many epochs it takes to reach max weight
         w_imit_target: 1.0      # Constant multiplier for imitation
         w_goal_start: 5.0        # What goal weight starts at when ramp begins
         w_goal_target: 5.0      # What goal weight ramps up to
-        w_ener_target: 0.1      # What energy weight ramps up to
+        w_ener_target: 1.0e-3   # What energy weight ramps up to
   Leaf_1:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
@@ -193,11 +193,11 @@ lasa:
       scheduler:
         base_scale: 1.0             # The shrink ray
         ramp_start: 500              # Epoch when goal/energy pressure begins
-        ramp_length: 1000             # How many epochs it takes to reach max weights
+        ramp_length: 1500             # How many epochs it takes to reach max weights
         w_imit_target: 1.0          # Constant multiplier for imitation
         w_goal_start: 5.0            # What goal weight starts at when ramp begins
         w_goal_target: 5.0         # What goal weight ramps up to
-        w_ener_target: 0.1          # What energy weight ramps up to
+        w_ener_target: 1.0e-3       # What energy weight ramps up to
   Sine:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
@@ -224,11 +224,11 @@ lasa:
       scheduler:
         base_scale: 1.0             # The shrink ray
         ramp_start: 500              # Epoch when goal/energy pressure begins
-        ramp_length: 1000             # How many epochs it takes to reach max weights
+        ramp_length: 1500             # How many epochs it takes to reach max weights
         w_imit_target: 1.0          # Constant multiplier for imitation
         w_goal_start: 5.0            # What goal weight starts at when ramp begins
         w_goal_target: 5.0         # What goal weight ramps up to
-        w_ener_target: 0.1          # What energy weight ramps up to
+        w_ener_target: 1.0e-3       # What energy weight ramps up to
 
 lerobot:
   # --- TASK SPECIFIC HYPERPARAMETERS ---
