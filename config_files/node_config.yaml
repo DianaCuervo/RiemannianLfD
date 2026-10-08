@@ -76,7 +76,7 @@ lasa:
   # --- SHAPE SPECIFIC HYPERPARAMETERS ---
   N:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
-    run_suffix: 'energy_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
@@ -87,7 +87,7 @@ lasa:
       step_size: 0.05
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 1.0e-4 #6.67e-4-->Optuna
+      learning_rate: 3.0e-4 #6.67e-4-->Optuna
       lr_gamma: 0.1
       lr_drop_fraction: 0.83
       batch_size: 32
@@ -215,20 +215,20 @@ lasa:
       lr_gamma: 0.1
       lr_drop_fraction: 0.8
       batch_size: 32
-      epochs: 2000
+      epochs: 1000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6       # Centralized metric ceiling
       metric_clamp_min: 1e-6      # Centralized metric ceiling
       grad_clip_norm: 0.5         # Gradient clipping threshold
       scheduler:
-        base_scale: 1.0             # The shrink ray
-        ramp_start: 500              # Epoch when goal/energy pressure begins
-        ramp_length: 1000             # How many epochs it takes to reach max weights
+        base_scale: 1.0           # The shrink ray
+        ramp_start: 0              # Epoch when goal/energy pressure begins
+        ramp_length: 700             # How many epochs it takes to reach max weights
         w_imit_target: 1.0          # Constant multiplier for imitation
         w_goal_start: 5.0            # What goal weight starts at when ramp begins
         w_goal_target: 5.0         # What goal weight ramps up to
-        w_ener_target: 0.1          # What energy weight ramps up to
+        w_ener_target: 1.0e-3       # What energy weight ramps up to
 
 lerobot:
   # --- TASK SPECIFIC HYPERPARAMETERS ---
