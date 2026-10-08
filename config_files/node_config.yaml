@@ -254,6 +254,8 @@ lerobot:
       model_train_logs_dir: './node/training/training_logs'
       model_test_results_dir: './node/evaluation/results/'
     # --- SHAPE SPECIFIC HYPERPARAMETERS ---
+    # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
@@ -268,20 +270,20 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 3000
+      epochs: 1000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
-      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      metric_clamp_min: 1e-6        # Centralized metric ceiling
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
-        base_scale: 0.0001   # The shrink ray
-        ramp_start: 500      # Epoch when goal/energy pressure begins
-        ramp_length: 1500    # How many epochs it takes to reach max weight
+        base_scale: 1.0   # The shrink ray
+        ramp_start: 0      # Epoch when goal/energy pressure begins
+        ramp_length: 700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 150.0  # What goal weight ramps up to
-        w_ener_target: 0.1   # What energy weight ramps up to
+        w_goal_start: 5.0    # What goal weight starts at when ramp begins
+        w_goal_target: 5.0  # What goal weight ramps up to
+        w_ener_target: 1.0e-3   # What energy weight ramps up to
   place:
     # Data Load and Preparation
     dataset:
@@ -304,6 +306,8 @@ lerobot:
       model_train_logs_dir: './node/training/training_logs'
       model_test_results_dir: './node/evaluation/results/'
     # --- SHAPE SPECIFIC HYPERPARAMETERS ---
+    # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
@@ -318,18 +322,18 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 3000
+      epochs: 1000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
-      metric_clamp_min: 1e-3        # Centralized metric ceiling
+      metric_clamp_min: 1e-6        # Centralized metric ceiling
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
-        base_scale: 0.0001   # The shrink ray
-        ramp_start: 500      # Epoch when goal/energy pressure begins
-        ramp_length: 1500    # How many epochs it takes to reach max weight
+        base_scale: 1.0   # The shrink ray
+        ramp_start: 0      # Epoch when goal/energy pressure begins
+        ramp_length: 700    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
-        w_goal_start: 1.0    # What goal weight starts at when ramp begins
-        w_goal_target: 150.0  # What goal weight ramps up to
-        w_ener_target: 0.1   # What energy weight ramps up to
+        w_goal_start: 5.0    # What goal weight starts at when ramp begins
+        w_goal_target: 5.0  # What goal weight ramps up to
+        w_ener_target: 1.0e-3   # What energy weight ramps up to
 
