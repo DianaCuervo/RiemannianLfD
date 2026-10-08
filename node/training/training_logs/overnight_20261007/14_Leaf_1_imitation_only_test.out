@@ -1,0 +1,72 @@
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:488: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[i, :, 0], z_target[i, :, 1], 'k--', label='Robot Demo', alpha=0.6, color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:491: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "b-" (-> color='b'). The keyword argument will take precedence.
+  plt.plot(z_pred[:, i, 0], z_pred[:, i, 1], 'b-', linewidth=2, label='NODE Path', color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:554: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[:, 0].detach().numpy(), z_target[:, 1].detach().numpy(), 'k--', label='Robot Demo', alpha=0.6, color='black')
+Hello world!
+
+--- Completing Configuration ---
+Starting run for Dataset: LASA | Shape: Leaf_1
+Loading VAE from: ./models/vae/lasa/VAE_Leaf_1-Shape.pt
+
+📝 Log file generated! Saving all output to: ./node/training/training_logs/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only_Log_20261008_045024.txt
+
+
+--- Initializing Models ---
+Length Trajectory: 1000
+Length Trajectories: 14
+Trajectories euclidian dimension: 7
+Trajectory 0: [-0.20185418 -0.9546074   0.          0.99529144 -0.09673874  0.00604617
+  0.        ]
+Trajectory: [-0.20185418 -0.9546074   0.         -0.99529144  0.09673874 -0.00604617
+ -0.        ]
+Trajectory: [-0.25845467 -0.86566377  0.          0.99344506 -0.1107781   0.02819806
+  0.        ]
+Trajectory: [-0.25845467 -0.86566377  0.         -0.99344506  0.1107781  -0.02819806
+ -0.        ]
+Trajectory: [-0.29079781 -0.89800691  0.          0.99271333 -0.11880561  0.02013654
+  0.        ]
+Trajectory: [-0.29079781 -0.89800691  0.         -0.99271333  0.11880561 -0.02013654
+ -0.        ]
+Trajectory 6: [-0.31505516 -0.79289171  0.          0.99110414 -0.12477937  0.04628912
+  0.        ]
+Trajectory 7: [-0.31505516 -0.79289171  0.         -0.99110414  0.12477937 -0.04628912
+ -0.        ]
+Trajectory: [-0.36356987 -0.8494922   0.          0.99007448 -0.13680762  0.03219003
+  0.        ]
+Trajectory: [-0.36356987 -0.8494922   0.         -0.99007448  0.13680762 -0.03219003
+ -0.        ]
+Trajectory: [-0.33122673 -0.8494922   0.          0.9911468  -0.12880635  0.03220159
+  0.        ]
+Total # of Trajectories: 14
+RBF beta = 0.1393 (from checkpoint)
+✅ Successfully loaded VAE from ./models/vae/lasa/VAE_Leaf_1-Shape.pt
+VAE Model initialized with DOF=7
+NODE Model initialized with latent_dim=2 and hidden_dim=256
+
+--- Preparing Datasets ---
+Dataset already exists at ./node/data/Leaf_1-Shape_processed. Skipping preprocessing.
+✅ Dataset Loaded from ./node/data/Leaf_1-Shape_processed | Train: 540 | Val: 60 | Test: 100
+Successfully loaded model from ./models/node/lasa/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only.pth
+
+--- Starting Testing & Visualizations ---
+Generating Manifold Visualization...
+Printing Riemannian Manifold...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only/Leaf_1-shape Manifold.svg
+Generating Path Comparisons...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only/5-Path Comparisons.svg
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only/30-Path Comparisons.svg
+Generating Random Points Comparison...
+Testing with random point in test set...
+Random index: 7
+Start point: tensor([-5.1391, -4.5347], grad_fn=<SelectBackward0>)
+Goal point: tensor([ 5.6961, -3.8925], grad_fn=<SelectBackward0>)
+Goal path shape: torch.Size([50, 2])
+Start X point pred: -5.139137
+Start Y point pred: -4.534729
+Predicted path goal: (5.4901223, -3.9150283)
+Successful.
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Leaf_1-Shape_RiemannianMSE_EGI_imitation_only/Trajectory with random start-end point.svg
+✅ Testing complete!
+Bye bye!

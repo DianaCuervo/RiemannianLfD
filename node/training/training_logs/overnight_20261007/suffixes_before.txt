@@ -1,0 +1,5 @@
+79:    run_suffix: 'energy_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+110:    run_suffix: 'energy_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+141:    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+172:    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+203:    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
