@@ -275,7 +275,7 @@ def main_iterative_vae():
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
     parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
-    parser.add_argument('--beta_scale', type=str, default=1.0, help='Specific beta scale for VAE (e.g., 1, 5, 10)')
+    parser.add_argument('--beta_scale', type=str, default='1', help='Specific beta scale for VAE (e.g., 1, 5, 10)')
     args = parser.parse_args()
 
     if args.dataset == 'lasa':

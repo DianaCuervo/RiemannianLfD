@@ -107,7 +107,7 @@ lasa:
         w_ener_target: 0.1  # What energy weight ramps up to
   Angle:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
-    run_suffix: 'energy_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+    run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
       latent_dim: 2
