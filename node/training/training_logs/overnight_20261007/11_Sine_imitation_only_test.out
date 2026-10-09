@@ -1,0 +1,72 @@
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:488: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[i, :, 0], z_target[i, :, 1], 'k--', label='Robot Demo', alpha=0.6, color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:491: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "b-" (-> color='b'). The keyword argument will take precedence.
+  plt.plot(z_pred[:, i, 0], z_pred[:, i, 1], 'b-', linewidth=2, label='NODE Path', color='black')
+/home/mahathi/Desktop/Projects/node-lfd/RiemannianLfD/node/utils/plots.py:554: UserWarning: color is redundantly defined by the 'color' keyword argument and the fmt string "k--" (-> color='k'). The keyword argument will take precedence.
+  plt.plot(z_target[:, 0].detach().numpy(), z_target[:, 1].detach().numpy(), 'k--', label='Robot Demo', alpha=0.6, color='black')
+Hello world!
+
+--- Completing Configuration ---
+Starting run for Dataset: LASA | Shape: Sine
+Loading VAE from: ./models/vae/lasa/VAE_Sine-Shape.pt
+
+📝 Log file generated! Saving all output to: ./node/training/training_logs/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only_Log_20261008_033826.txt
+
+
+--- Initializing Models ---
+Length Trajectory: 1000
+Length Trajectories: 14
+Trajectories euclidian dimension: 7
+Trajectory 0: [-0.80442548 -0.27807902  0.          0.90009796 -0.43559305 -0.00907486
+  0.        ]
+Trajectory: [-0.80442548 -0.27807902  0.         -0.90009796  0.43559305  0.00907486
+ -0.        ]
+Trajectory: [-0.85099084 -0.20357444  0.          0.89492348 -0.44612768  0.00905843
+  0.        ]
+Trajectory: [-0.85099084 -0.20357444  0.         -0.89492348  0.44612768 -0.00905843
+ -0.        ]
+Trajectory: [-0.85099084 -0.16632215  0.          0.8947959  -0.44610772  0.01811605
+  0.        ]
+Trajectory: [-0.85099084 -0.16632215  0.         -0.8947959   0.44610772 -0.01811605
+ -0.        ]
+Trajectory 6: [-1.         -0.13838293  0.          0.87726292 -0.47937135  0.02475627
+  0.        ]
+Trajectory 7: [-1.         -0.13838293  0.         -0.87726292  0.47937135 -0.02475627
+ -0.        ]
+Trajectory: [-0.84167777 -0.16632215  0.          0.89584064 -0.44400577  0.01812268
+  0.        ]
+Trajectory: [-0.84167777 -0.16632215  0.         -0.89584064  0.44400577 -0.01812268
+ -0.        ]
+Trajectory: [-0.86961698 -0.18494829  0.          0.89276601 -0.450316    0.01357737
+  0.        ]
+Total # of Trajectories: 14
+RBF beta = 0.1536 (from checkpoint)
+✅ Successfully loaded VAE from ./models/vae/lasa/VAE_Sine-Shape.pt
+VAE Model initialized with DOF=7
+NODE Model initialized with latent_dim=2 and hidden_dim=512
+
+--- Preparing Datasets ---
+Dataset already exists at ./node/data/Sine-Shape_processed. Skipping preprocessing.
+✅ Dataset Loaded from ./node/data/Sine-Shape_processed | Train: 540 | Val: 60 | Test: 100
+Successfully loaded model from ./models/node/lasa/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only.pth
+
+--- Starting Testing & Visualizations ---
+Generating Manifold Visualization...
+Printing Riemannian Manifold...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only/Sine-shape Manifold.svg
+Generating Path Comparisons...
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only/5-Path Comparisons.svg
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only/30-Path Comparisons.svg
+Generating Random Points Comparison...
+Testing with random point in test set...
+Random index: 7
+Start point: tensor([-1.4247, -3.8996], grad_fn=<SelectBackward0>)
+Goal point: tensor([-5.8533, -5.5945], grad_fn=<SelectBackward0>)
+Goal path shape: torch.Size([50, 2])
+Start X point pred: -1.4246845
+Start Y point pred: -3.899562
+Predicted path goal: (-5.7979007, -5.5417037)
+Successful.
+📸 Test plot saved as SVG to: ./node/evaluation/results/NODE_lasa_Sine-Shape_RiemannianMSE_EGI_imitation_only/Trajectory with random start-end point.svg
+✅ Testing complete!
+Bye bye!

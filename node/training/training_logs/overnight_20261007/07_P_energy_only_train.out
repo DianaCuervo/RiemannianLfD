@@ -1,0 +1,261 @@
+Hello world!
+
+--- Completing Configuration ---
+Starting run for Dataset: LASA | Shape: P
+Loading VAE from: ./models/vae/lasa/VAE_P-Shape.pt
+
+📝 Log file generated! Saving all output to: ./node/training/training_logs/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_only_Log_20261008_013724.txt
+
+
+--- Initializing Models ---
+Length Trajectory: 1000
+Length Trajectories: 14
+Trajectories euclidian dimension: 7
+Trajectory 0: [-0.60905322 -1.          0.          0.96460774 -0.17043398 -0.20120678
+  0.        ]
+Trajectory: [-0.60905322 -1.          0.         -0.96460774  0.17043398  0.20120678
+ -0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.          0.96303179 -0.19400167 -0.18690405
+  0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.         -0.96303179  0.19400167  0.18690405
+ -0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.          0.95877584 -0.20789628 -0.19372153
+  0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.         -0.95877584  0.20789628  0.19372153
+ -0.        ]
+Trajectory 6: [-0.7998161  -0.9141567   0.          0.95942105 -0.21739377 -0.17958616
+  0.        ]
+Trajectory 7: [-0.7998161  -0.9141567   0.         -0.95942105  0.21739377  0.17958616
+ -0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.          0.96701581 -0.18478748 -0.1753112
+  0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.         -0.96701581  0.18478748  0.1753112
+ -0.        ]
+Trajectory: [-0.86658311 -0.85692784  0.          0.95811662 -0.23383091 -0.16533499
+  0.        ]
+Total # of Trajectories: 14
+RBF beta = 0.1353 (from checkpoint)
+✅ Successfully loaded VAE from ./models/vae/lasa/VAE_P-Shape.pt
+VAE Model initialized with DOF=7
+NODE Model initialized with latent_dim=2 and hidden_dim=512
+
+--- Preparing Datasets ---
+Building dataset for LASA - P-Shape...
+Length Trajectory: 1000
+Length Trajectories: 14
+Trajectories euclidian dimension: 7
+Trajectory 0: [-0.60905322 -1.          0.          0.96460774 -0.17043398 -0.20120678
+  0.        ]
+Trajectory: [-0.60905322 -1.          0.         -0.96460774  0.17043398  0.20120678
+ -0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.          0.96303179 -0.19400167 -0.18690405
+  0.        ]
+Trajectory: [-0.70443466 -0.94277114  0.         -0.96303179  0.19400167  0.18690405
+ -0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.          0.95877584 -0.20789628 -0.19372153
+  0.        ]
+Trajectory: [-0.76166352 -0.97138557  0.         -0.95877584  0.20789628  0.19372153
+ -0.        ]
+Trajectory 6: [-0.7998161  -0.9141567   0.          0.95942105 -0.21739377 -0.17958616
+  0.        ]
+Trajectory 7: [-0.7998161  -0.9141567   0.         -0.95942105  0.21739377  0.17958616
+ -0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.          0.96701581 -0.18478748 -0.1753112
+  0.        ]
+Trajectory: [-0.66628208 -0.89508041  0.         -0.96701581  0.18478748  0.1753112
+ -0.        ]
+Trajectory: [-0.86658311 -0.85692784  0.          0.95811662 -0.23383091 -0.16533499
+  0.        ]
+Total # of Trajectories: 14
+
+🔍 Calculating Riemannian Baselines from RAW Demonstrations...
+============================================================
+📊 RAW DATASET BASELINES CALCULATED
+============================================================
+1. Ground Density (Trace/2): 0.3483
+2. Avg Demo Path Energy:     1,888.8439
+👉 auto-calculated safe_baseline: 0.35
+👉 auto-calculated metric_scale_energy: 5.29e-04
+============================================================
+
+💾 Saved baselines permanently to: ./node/data/P-Shape_processed/dataset_baselines.json
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+num_steps:  1000
+✅ Created 700 segments.
+✅ Successfully created 700 segments in ./node/data/P-Shape_processed
+✅ Dataset Loaded from ./node/data/P-Shape_processed | Train: 540 | Val: 60 | Test: 100
+✅ Successfully loaded dataset baselines from JSON.
+⚙️  Using Safe Baseline: 0.35 (Auto-Calculated)
+⚙️  Using Energy Scale:  5.29e-04 (Auto-Calculated)
+
+🚀 Launching NODE Training...
+
+============================================================================================================================================
+Starting Training: NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_only on CUDA
+Epochs: 1000 | Initial LR: 0.0001 | LR Drop at: 800
+============================================================================================================================================
+
+Epoch 1 |
+| Train | Tot: 71.80154 | Imit: 113.03544 | Ener: 0.00000 | Goal: 14.36031 |
+| Valid | Tot: 3.57219 | Imit: 142.48571 | Ener: 0.00014 | Goal: 0.71444 |
+⚠️ Riem. Gap: 29.45027
+⚠️ Euclid Gap: 1.03604
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 0.00e+00) | Density: 0.00 (0.00x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 50 |
+| Train | Tot: 0.01444 | Imit: 20.00039 | Ener: 0.04971 | Goal: 0.00289 |
+| Valid | Tot: 0.00151 | Imit: 42.98468 | Ener: 0.04570 | Goal: 0.00030 |
+⚠️ Riem. Gap: 22.98428
+⚠️ Euclid Gap: 8.73220
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 7.00e-05) | Density: 0.27 (0.78x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 100 |
+| Train | Tot: 0.00262 | Imit: 19.02953 | Ener: 0.05202 | Goal: 0.00052 |
+| Valid | Tot: 0.00038 | Imit: 39.04213 | Ener: 0.04855 | Goal: 0.00007 |
+⚠️ Riem. Gap: 20.01260
+⚠️ Euclid Gap: 8.55283
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.41e-04) | Density: 0.28 (0.79x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 150 |
+| Train | Tot: 0.00037 | Imit: 18.69065 | Ener: 0.05303 | Goal: 0.00007 |
+| Valid | Tot: 0.00009 | Imit: 38.17579 | Ener: 0.04919 | Goal: 0.00002 |
+⚠️ Riem. Gap: 19.48514
+⚠️ Euclid Gap: 7.82990
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 2.13e-04) | Density: 0.23 (0.67x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 200 |
+| Train | Tot: 0.00192 | Imit: 18.52424 | Ener: 0.05445 | Goal: 0.00038 |
+| Valid | Tot: 0.00006 | Imit: 36.04301 | Ener: 0.05087 | Goal: 0.00001 |
+⚠️ Riem. Gap: 17.51877
+⚠️ Euclid Gap: 7.65132
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 2.84e-04) | Density: 0.20 (0.56x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 250 |
+| Train | Tot: 0.00918 | Imit: 18.12882 | Ener: 0.05505 | Goal: 0.00183 |
+| Valid | Tot: 0.00044 | Imit: 35.47803 | Ener: 0.05107 | Goal: 0.00009 |
+⚠️ Riem. Gap: 17.34921
+⚠️ Euclid Gap: 7.85054
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 3.56e-04) | Density: 0.24 (0.69x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 300 |
+| Train | Tot: 0.00083 | Imit: 17.71843 | Ener: 0.05665 | Goal: 0.00016 |
+| Valid | Tot: 0.00006 | Imit: 32.75376 | Ener: 0.05261 | Goal: 0.00001 |
+⚠️ Riem. Gap: 15.03533
+⚠️ Euclid Gap: 7.50198
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 4.27e-04) | Density: 0.18 (0.51x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 350 |
+| Train | Tot: 0.00165 | Imit: 18.16266 | Ener: 0.05747 | Goal: 0.00032 |
+| Valid | Tot: 0.00009 | Imit: 31.66822 | Ener: 0.05353 | Goal: 0.00001 |
+⚠️ Riem. Gap: 13.50556
+⚠️ Euclid Gap: 7.25550
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 4.99e-04) | Density: 0.21 (0.60x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 400 |
+| Train | Tot: 0.00056 | Imit: 17.54277 | Ener: 0.05747 | Goal: 0.00011 |
+| Valid | Tot: 0.00008 | Imit: 30.38277 | Ener: 0.05389 | Goal: 0.00001 |
+⚠️ Riem. Gap: 12.84000
+⚠️ Euclid Gap: 7.07462
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 5.70e-04) | Density: 0.22 (0.63x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 450 |
+| Train | Tot: 0.00054 | Imit: 17.84895 | Ener: 0.05739 | Goal: 0.00010 |
+| Valid | Tot: 0.00007 | Imit: 30.61827 | Ener: 0.05368 | Goal: 0.00001 |
+⚠️ Riem. Gap: 12.76931
+⚠️ Euclid Gap: 7.13331
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 6.41e-04) | Density: 0.18 (0.51x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 500 |
+| Train | Tot: 0.01099 | Imit: 18.35164 | Ener: 0.05684 | Goal: 0.00219 |
+| Valid | Tot: 0.00008 | Imit: 29.50789 | Ener: 0.05334 | Goal: 0.00001 |
+⚠️ Riem. Gap: 11.15625
+⚠️ Euclid Gap: 6.53487
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 7.13e-04) | Density: 0.16 (0.46x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 550 |
+| Train | Tot: 0.00540 | Imit: 17.50048 | Ener: 0.05681 | Goal: 0.00107 |
+| Valid | Tot: 0.00008 | Imit: 29.60719 | Ener: 0.05298 | Goal: 0.00001 |
+⚠️ Riem. Gap: 12.10671
+⚠️ Euclid Gap: 6.70304
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 7.84e-04) | Density: 0.15 (0.44x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 600 |
+| Train | Tot: 0.00109 | Imit: 17.61674 | Ener: 0.05611 | Goal: 0.00021 |
+| Valid | Tot: 0.00013 | Imit: 30.23842 | Ener: 0.05275 | Goal: 0.00002 |
+⚠️ Riem. Gap: 12.62168
+⚠️ Euclid Gap: 6.99717
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 8.56e-04) | Density: 0.19 (0.54x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 650 |
+| Train | Tot: 0.00319 | Imit: 18.28605 | Ener: 0.05548 | Goal: 0.00063 |
+| Valid | Tot: 0.00019 | Imit: 31.12465 | Ener: 0.05255 | Goal: 0.00003 |
+⚠️ Riem. Gap: 12.83860
+⚠️ Euclid Gap: 6.85387
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 9.27e-04) | Density: 0.21 (0.61x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 700 |
+| Train | Tot: 0.00015 | Imit: 17.77426 | Ener: 0.05508 | Goal: 0.00002 |
+| Valid | Tot: 0.00007 | Imit: 32.36269 | Ener: 0.05189 | Goal: 0.00000 |
+⚠️ Riem. Gap: 14.58843
+⚠️ Euclid Gap: 6.89196
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 9.99e-04) | Density: 0.14 (0.41x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 750 |
+| Train | Tot: 0.00143 | Imit: 17.87460 | Ener: 0.05181 | Goal: 0.00028 |
+| Valid | Tot: 0.00016 | Imit: 36.22495 | Ener: 0.04824 | Goal: 0.00002 |
+⚠️ Riem. Gap: 18.35035
+⚠️ Euclid Gap: 6.56836
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.16 (0.45x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 800 |
+| Train | Tot: 0.00120 | Imit: 18.39289 | Ener: 0.05015 | Goal: 0.00023 |
+| Valid | Tot: 0.00008 | Imit: 40.83242 | Ener: 0.04666 | Goal: 0.00001 |
+⚠️ Riem. Gap: 22.43953
+⚠️ Euclid Gap: 6.84574
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.18 (0.50x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+📉 Epoch 800: Learning Rate dropped to 1e-05
+Epoch 850 |
+| Train | Tot: 0.00005 | Imit: 18.34518 | Ener: 0.05018 | Goal: 0.00000 |
+| Valid | Tot: 0.00005 | Imit: 39.53678 | Ener: 0.04674 | Goal: 0.00000 |
+⚠️ Riem. Gap: 21.19159
+⚠️ Euclid Gap: 6.99547
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.15 (0.43x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 900 |
+| Train | Tot: 0.00006 | Imit: 18.36119 | Ener: 0.05015 | Goal: 0.00000 |
+| Valid | Tot: 0.00005 | Imit: 39.29895 | Ener: 0.04656 | Goal: 0.00000 |
+⚠️ Riem. Gap: 20.93776
+⚠️ Euclid Gap: 6.98727
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.17 (0.48x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 950 |
+| Train | Tot: 0.00005 | Imit: 18.43716 | Ener: 0.05006 | Goal: 0.00000 |
+| Valid | Tot: 0.00005 | Imit: 39.64402 | Ener: 0.04647 | Goal: 0.00000 |
+⚠️ Riem. Gap: 21.20686
+⚠️ Euclid Gap: 6.96268
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.17 (0.48x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Epoch 1000 |
+| Train | Tot: 0.00005 | Imit: 18.53054 | Ener: 0.04973 | Goal: 0.00000 |
+| Valid | Tot: 0.00005 | Imit: 39.57010 | Ener: 0.04622 | Goal: 0.00000 |
+⚠️ Riem. Gap: 21.03956
+⚠️ Euclid Gap: 7.05776
+🚩 DASHBOARD: Weights (Imit: 0.0000e+00, Goal: 5.0000e+00, Ener: 1.00e-03) | Density: 0.17 (0.48x base)
+--------------------------------------------------------------------------------------------------------------------------------------------
+Training Complete in 24.18 minutes.
+✅ Model saved dynamically to ./models/node/lasa/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_only.pth
+📊 Training plot saved as SVG to: ./node/training/training_curves/NODE_lasa_P-Shape_RiemannianMSE_EGI_energy_only_Training-Curves.svg
+Bye bye!
