@@ -1,32 +1,25 @@
 #!/bin/bash
 
-# Function to run the training loop for a specific dataset, once per beta_scale
+# Function to run the training loop for a specific dataset
 run_dataset() {
     local dataset=$1
     shift
     local shapes=("$@")
 
     for shape in "${shapes[@]}"; do
-        for beta in "${BETA_SCALES[@]}"; do
-            echo "================================================================="
-            echo "🚀 STARTING OVERNIGHT RUN FOR: Dataset=$dataset | Shape=$shape | beta_scale=$beta"
-            echo "================================================================="
+        echo "================================================================="
+        echo "🚀 STARTING OVERNIGHT RUN FOR: Dataset=$dataset | Shape=$shape"
+        echo "================================================================="
 
-            # python vae_main.py --mode train --dataset $dataset --shape $shape --beta_scale $beta --overwrite
-            python vae_main.py --mode test --dataset $dataset --shape $shape --beta_scale $beta --num_segments 0
-            # python run_benchmark.py --framework stochman --dataset lasa --shape $shape --beta_scale $beta
-            # python vae_main.py --mode visualize --dataset $dataset --shape $shape --beta_scale $beta
+        python vae_main.py --mode train --dataset $dataset --shape $shape --overwrite
+        python vae_main.py --mode test --dataset $dataset --shape $shape --num_segments 0
+        # python run_benchmark.py --framework stochman --dataset lasa --shape $shape
+        python vae_main.py --mode visualize --dataset $dataset --shape $shape
 
-            echo "✅ Finished training for $dataset - $shape - beta_scale $beta!"
-            echo ""
-        done
+        echo "✅ Finished training for $dataset - $shape!"
+        echo ""
     done
 }
-
-# ---------------------------------------------------------
-# 0. Define the RBF beta scales (one VAE per value)
-# ---------------------------------------------------------
-BETA_SCALES=("1" "5" "10")
 
 # ---------------------------------------------------------
 # 1. Define shapes for LASA
@@ -40,6 +33,7 @@ LASA_SHAPES=("N" "Sine")
 # # ---------------------------------------------------------
 # # 2. Define shapes for TOY
 # # (Change these placeholder names to your actual toy shapes)
+# # (the toy beta_scale is selected in config_files/vae_config.yaml)
 # # ---------------------------------------------------------
 TOY_SHAPES=("None")
 

@@ -14,7 +14,7 @@ from node.data.dataset import prepare_loaders
 from node.utils.plots import visualize_metric, plot_trajectories_on_manifold, plot_trajectories
 from vae.vae_model import load_pretrained_vae
 from vae.data.vae_dataset import load_vae_training_points
-from vae.utils.config import load_dataset_config
+from vae.utils.config import load_dataset_config, beta_label
 import matplotlib.pyplot as plt
 
 
@@ -61,6 +61,16 @@ def load_training_config(file_path, dataset, shape=None):
 # ==========================================
 # VAE PREPARATION
 # ==========================================
+def resolve_beta(args):
+    """The beta_scale of the VAE to benchmark: selected in vae_config.yaml for toy,
+    from --beta_scale for lasa, None for datasets with a single VAE."""
+    if args.dataset == 'toy':
+        vae_cfg = load_training_config('config_files/vae_config.yaml', args.dataset)
+        return beta_label(vae_cfg['architecture']['beta_scale'])
+    if args.dataset == 'lasa':
+        return args.beta_scale
+    return None
+
 def load_respective_vae(args, device):
     # 1. Load VAE Config to find the model
     vae_cfg = load_training_config('config_files/vae_config.yaml', args.dataset, args.shape)
@@ -69,8 +79,8 @@ def load_respective_vae(args, device):
     vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
     vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
     # One VAE per beta_scale (as main_new.py's main_iterative_vae)
-    if args.dataset in ('toy', 'lasa'):
-        beta = args.beta_scale
+    beta = resolve_beta(args)
+    if beta is not None:
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = vae_cfg['training_artifacts']['model_path'].replace('{beta}', str(beta))
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{beta}', str(beta))
@@ -164,7 +174,8 @@ def main():
     parser.add_argument('--shape', type=str, default='None',
                         help="Specific shape for LASA (e.g., N, Angle)")
     parser.add_argument('--beta_scale', type=str, default='1',
-                        help="Specific beta scale for the toy/LASA VAE (e.g., 1, 5, 10)")
+                        help="Specific beta scale for the LASA VAE (e.g., 1, 5, 10); "
+                             "the toy one is selected in vae_config.yaml")
     parser.add_argument('--node_variants', type=str, nargs='+', default=None,
                         help="NODE run_suffix values to evaluate (e.g., energy_imitation energy_only); "
                              "default: the run_suffix in node_config.yaml")
@@ -180,7 +191,7 @@ def main():
         device = args.device
 
     # Resolve {shape}/{beta} once: every evaluator reads these paths as they are
-    beta = args.beta_scale if args.dataset in ('toy', 'lasa') else None
+    beta = resolve_beta(args)
     for key in ('benchmark_dir', 'gt_data'):
         dataset_cfg[key] = dataset_cfg[key].replace('{shape}', args.shape).replace('{beta}', str(beta))
 

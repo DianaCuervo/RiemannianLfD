@@ -6,8 +6,7 @@ toy:
     qua_dof: 3                # 3 for the Toy VAE
     sigma: 1e-6               # VAE's decoder scale for position data
     sigma_z: 1.0              # VAE's encoder scale
-    #beta_scale: 10
-    beta_scale: '{beta}'
+    beta_scale: 10            # RBF bandwidth multiplier: select it here only, it also names the files below ({beta})
   training_artifacts:
     batch_size: 128
 #    model_path: './models/vae/toy_example/VAE_toy.pt'

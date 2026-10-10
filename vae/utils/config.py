@@ -45,16 +45,30 @@ def _select(config, dataset, task, file_path):
     return copy.deepcopy(selected)
 
 
+def beta_label(beta_scale):
+    """The {beta} of the file names for a beta_scale: 10, 10.0 and '10' all give '10'."""
+    return f"{float(beta_scale):g}"
+
+
 def load_vae_config(dataset, shape=None, task=None, beta=None):
     """The VAE config for one dataset (and lerobot task), with placeholders resolved.
 
-    beta: the RBF beta_scale (e.g. '1', '5', '10') for configs with one VAE per beta_scale
-    (toy, lasa), which fills their '{beta}' paths and architecture.beta_scale.
+    The '{beta}' of the file names comes from architecture.beta_scale when the config sets
+    it to a number (toy: select it in vae_config.yaml only). A config that leaves it as
+    '{beta}' (lasa) takes it from `beta` instead (the --beta_scale CLI argument).
     """
     with open(VAE_CONFIG_PATH, 'r') as file:
         full_config = yaml.safe_load(file)
     vae_cfg = _select(full_config, dataset, task, VAE_CONFIG_PATH)
-    vae_cfg = _substitute(vae_cfg, _placeholders(dataset, shape, task, beta))
+
+    config_beta = vae_cfg['architecture'].get('beta_scale')
+    if config_beta is not None and '{beta}' not in str(config_beta):
+        if beta is not None and beta_label(beta) != beta_label(config_beta):
+            raise ValueError(f"The {dataset} beta_scale is selected in {VAE_CONFIG_PATH} ({config_beta}), "
+                             f"not on the command line: drop --beta_scale {beta} or edit the config")
+        beta = config_beta
+    vae_cfg = _substitute(vae_cfg, _placeholders(dataset, shape, task,
+                                                 beta_label(beta) if beta is not None else None))
 
     unresolved = [key for key, value in vae_cfg['training_artifacts'].items()
                   if isinstance(value, str) and '{beta}' in value]

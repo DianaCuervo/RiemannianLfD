@@ -12,6 +12,7 @@ from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
 from vae.vae_model import load_pretrained_vae
 from vae.data.vae_dataset import load_vae_training_points
+from vae.utils.config import beta_label
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
 from node.training.node_training_new import train_node_energy_goal_imitation_riemannianmse
@@ -275,7 +276,8 @@ def main_iterative_vae():
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
     parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
-    parser.add_argument('--beta_scale', type=str, default='1', help='Specific beta scale for VAE (e.g., 1, 5, 10)')
+    parser.add_argument('--beta_scale', type=str, default='1',
+                        help='Specific beta scale for the lasa VAE (e.g., 1, 5, 10); the toy one is selected in vae_config.yaml')
     args = parser.parse_args()
 
     if args.dataset == 'lasa':
@@ -293,6 +295,9 @@ def main_iterative_vae():
 
     original_path = vae_cfg['training_artifacts']['model_path']
     beta = args.beta_scale
+    if args.dataset == 'toy':
+        # The toy beta_scale is selected in vae_config.yaml only (--beta_scale is for lasa)
+        beta = beta_label(vae_cfg['architecture']['beta_scale'])
     beta_complement = 'beta_scale_' + beta
     # Replace the '{shape}/{task}/{beta}' placeholder with the actual data from the command line
     if args.dataset == 'toy':
