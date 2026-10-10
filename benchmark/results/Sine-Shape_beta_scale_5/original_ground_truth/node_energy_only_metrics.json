@@ -1,0 +1,49 @@
+{
+    "framework": "NODE",
+    "variant": "energy_only",
+    "model_name": "NODE_lasa_Sine-Shape_beta_scale_5_RiemannianMSE_EGI_energy_only",
+    "dataset": "lasa",
+    "shape": "Sine",
+    "beta_scale": "5",
+    "latent_dim": 2,
+    "hidden_dim": 512,
+    "num_queries_answered": 700,
+    "latent_metrics": {
+        "MSE_Error": 23.831940736607145,
+        "Radial_Error": 0.02080908790230751,
+        "Max_Radial": 0.6835493445396423,
+        "MSE_Mean": 23.831940736607145,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 0.02080908790230751,
+        "Radial_Std": 0.031603749841451645
+    },
+    "ambient_metrics": {
+        "Goal_MSE": 0.5370114773497483,
+        "Imitation_MSE": 81.04464437471572,
+        "Imitation_MSE_ArcLength": 2.841976027429381,
+        "Goal_Ori_Angle_deg": 1.5652468968568714,
+        "Imitation_Ori_Angle_deg": 9.320366668822235,
+        "Goal_MSE_Std": 0.8077851154604578,
+        "Imitation_MSE_Std": 40.597839219047366,
+        "Imitation_MSE_ArcLength_Std": 2.5809224721276856
+    },
+    "off_manifold": {
+        "samples_per_path": 200,
+        "num_paths": 700,
+        "alpha_0.25": {
+            "tau": 0.10257783379909569,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.5": {
+            "tau": 4.779433866853974,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.75": {
+            "tau": 9.456289899908853,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        }
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "shape": "Sine",
+    "beta_scale": "5",
+    "ambient_metrics": {
+        "Goal_MSE": 0.5375433078766267,
+        "Imitation_MSE": 0.729173864611244,
+        "Imitation_MSE_ArcLength": 0.9793204493227525,
+        "Goal_Ori_Angle_deg": 1.562130417425243,
+        "Imitation_Ori_Angle_deg": 1.3467416363133438,
+        "Goal_MSE_Std": 0.8130254759559594,
+        "Imitation_MSE_Std": 0.461837380736405,
+        "Imitation_MSE_ArcLength_Std": 0.682313970418105
+    }
+}
