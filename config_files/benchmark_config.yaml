@@ -33,14 +33,15 @@ datasets:
     origin_file: '{shape}_UQ.mat'
     trajectory_number: 7
     # Preprocessing params for benchmark generation
-    min_window: 200
+    min_window: 100
     max_window: 980
-    samples_per_path: 10
+    samples_per_path: 50
     time_steps: 100
     # Benchmark-specific save paths (dynamically replaces {shape} and {beta}): the latent
     # ground truth is encoded with one VAE, so every beta_scale gets its own file
     benchmark_dir: './benchmark/data/lasa_{shape}_beta_scale_{beta}'
-    gt_data: './benchmark/data/lasa_{shape}_beta_scale_{beta}/ground_truth_140.pt'
+    gt_data: './benchmark/data/lasa_{shape}_beta_scale_{beta}/ground_truth_{bm_mode}.pt'
+    save_dir_node_processed: './node/data/{shape}_processed'
 
 frameworks:
   graph:

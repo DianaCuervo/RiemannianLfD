@@ -4,7 +4,7 @@ import yaml
 import torch
 import copy
 
-from benchmark.data_utils import generate_benchmark_dataset, save_test_config, load_benchmark_reference, save_json
+from benchmark.data_utils import generate_benchmark_original_dataset, generate_benchmark_noisy_dataset, save_test_config, load_benchmark_reference, save_json
 from benchmark.metrics import decode_latente_paths, calculate_ambient_metrics
 from benchmark.off_manifold import get_off_manifold_reference, reference_summary, off_manifold_rates
 from benchmark.eval_graph import run_graph_benchmark
@@ -129,14 +129,17 @@ def prepare_benchmark_data(dataset_cfg, args, device, vae_model):
     print("Slicing and processing benchmark segments...")
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
 
-    reference = generate_benchmark_dataset(dataset_cfg, dataset_shape, vae_model, device)
+    if args.benchmark_mode == 'original':
+        reference = generate_benchmark_original_dataset(dataset_cfg, dataset_shape, vae_model, device)
+    if args.benchmark_mode == 'noisy':
+        reference = generate_benchmark_noisy_dataset(dataset_cfg, dataset_shape, vae_model, device)
     ground_truth = reference['latent']
 
-    # 2. Save it
+    #2. Save it
     z1 = ground_truth[:, 0, :]
     z2 = ground_truth[:, -1, :]
     save_test_config(z1, z2, ground_truth, filename=filename, directory=directory,
-                     extras={k: reference[k] for k in ('x_ambient', 'xy_center', 'xy_scale')})
+                    extras={k: reference[k] for k in ('x_ambient', 'xy_center', 'xy_scale')})
     print("✅ Benchmark dataset generated and secured!")
 
     # Ploting benchmark paths
@@ -179,6 +182,10 @@ def main():
     parser.add_argument('--node_variants', type=str, nargs='+', default=None,
                         help="NODE run_suffix values to evaluate (e.g., energy_imitation energy_only); "
                              "default: the run_suffix in node_config.yaml")
+    parser.add_argument('--benchmark_mode', type=str, default='original',
+                        choices=['original', 'noisy'],
+                        help="Type of benchmark to be executed (e.g., original noise); "
+                             "default: original")
     parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cpu', 'cuda'],
                         help="Device for inference and timing")
     args = parser.parse_args()
@@ -194,6 +201,8 @@ def main():
     beta = resolve_beta(args)
     for key in ('benchmark_dir', 'gt_data'):
         dataset_cfg[key] = dataset_cfg[key].replace('{shape}', args.shape).replace('{beta}', str(beta))
+        if key=='gt_data':
+            dataset_cfg[key] = dataset_cfg[key].replace('{bm_mode}', args.benchmark_mode)
 
     # 3. Load the VAE, then trigger dataset safety check & generation
     print("\n Preparing Latent Space...")
@@ -206,13 +215,16 @@ def main():
     if beta is not None:
         dataset_name_with_shape = f"{dataset_name_with_shape}_beta_scale_{beta}"
     results_dir = os.path.join(dataset_cfg['results_base_dir'], dataset_name_with_shape)
+    if args.benchmark_mode is not None:
+        complement = f"{args.benchmark_mode}_ground_truth"
+    results_dir = os.path.join(results_dir, complement)
     os.makedirs(results_dir, exist_ok=True)
     print(f"\n✅ Creating {results_dir} to save benchmark results.")
 
     # 5. Shared inputs of every framework: reference data, off-manifold reference, NODE config
     reference = load_benchmark_reference(dataset_cfg['gt_data'])
     off_ref = get_off_manifold_reference(vae_model, args.dataset, args.shape,
-                                         os.path.join(dataset_cfg['benchmark_dir'], 'off_manifold_reference.pt'))
+                                         os.path.join(dataset_cfg['benchmark_dir'], complement+'_off_manifold_reference.pt'))
     title = args.dataset.upper() if args.shape in ['None'] else f"{args.shape}-Shape"
     if beta is not None:
         title = f"{title} beta_scale_{beta}"
