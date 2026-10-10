@@ -1,18 +1,52 @@
 import os
+import json
+import numpy as np
 import torch
+from scipy.io import loadmat
 
 from node.data.preprocessing import get_demonstrations_paths, interpolate_trajectories, encode_demonstrations_paths, \
     create_universal_segmented_dataset, unify_time_steps, get_demonstrations_paths_newVAE
 
+# Load lasa demonstrations with the normalization constants
+def load_lasa_demos(origin_dir, origin_file, trajectory_number):
+    """Load LASA demos and return them normalized, plus the constants needed to undo it.
+
+    Mirrors node/data/preprocessing.py's get_demonstrations_paths_newVAE + normalize_newVAE
+    exactly -- one isotropic normalization shared across all demos -- but also hands back
+    xy_center/xy_scale, which preprocessing computes locally and discards. Without them we
+    cannot map a decoded trajectory back to real LASA units.
+    """
+    demoUQ = loadmat(f"{origin_dir}/{origin_file}")["demoUQ"]
+
+    raw_positions = [demoUQ[0, i]["tsPos"][0, 0].T for i in range(trajectory_number)]
+    raw_quats = [demoUQ[0, i]["quat"][0, 0].T for i in range(trajectory_number)]
+
+    all_xy = np.vstack([pos[:, 0:2] for pos in raw_positions])
+    xy_min, xy_max = all_xy.min(axis=0), all_xy.max(axis=0)
+    xy_center = (xy_min + xy_max) / 2
+    xy_scale = (xy_max - xy_min).max() / 2  # single scalar -> isotropic scaling
+
+    demos = []
+    for pos, quat in zip(raw_positions, raw_quats):
+        xy_norm = (pos[:, 0:2] - xy_center) / xy_scale
+        demos.append(np.hstack([xy_norm, pos[:, 2:3], quat]))
+
+    return demos, xy_center, xy_scale
+
 # Generate the benchmark datasets by dataset
 def generate_benchmark_dataset(dataset_cfg, shape_name, vae_model, device):
     """
-    Acts just like build_dataset_offline, but formats and saves the output
-    as a single ground_truth.pt file specifically for benchmarking.
+    Acts just like build_dataset_offline, but formats the output as a single benchmark
+    reference: the latent ground truth plus the raw demonstration segment behind each query.
+
+    Returns a dict with
+        latent:     [B, T, latent_dim] encoded demonstration segments (z1/z2 are its ends)
+        x_ambient:  [B, T, dof] the same segments in original units (normalization undone)
+        xy_center, xy_scale: the normalize_newVAE constants, to un-normalize decoded paths
     """
     dataset_type = dataset_cfg['type']
 
-    # 1. Load Real Paths
+    # 1. Load Real Paths (normalized, as the VAE saw them)
     if dataset_type == 'toy':
         real_paths = get_demonstrations_paths(
             origin_dir=dataset_cfg['origin_dir'],
@@ -21,9 +55,10 @@ def generate_benchmark_dataset(dataset_cfg, shape_name, vae_model, device):
             r2_letter=dataset_cfg['r2_letter'],
             s2_letter=dataset_cfg['s2_letter']
         )
-        interpolated_paths = interpolate_trajectories(real_paths,
-                                                      interpolation_points=dataset_cfg['interpolation_points'])
-        latent_paths = encode_demonstrations_paths(vae_model, interpolated_paths, device)
+        real_paths = interpolate_trajectories(real_paths,
+                                              interpolation_points=dataset_cfg['interpolation_points'])
+        # The toy demos are not normalized
+        xy_center, xy_scale = np.zeros(2), 1.0
 
     elif dataset_type == 'lasa':
         origin_file = dataset_cfg['origin_file'].replace('{shape}', shape_name)
@@ -32,29 +67,43 @@ def generate_benchmark_dataset(dataset_cfg, shape_name, vae_model, device):
             origin_file=origin_file,
             trajectory_number=dataset_cfg['trajectory_number']
         )
-        latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
+        _, xy_center, xy_scale = load_lasa_demos(dataset_cfg['origin_dir'], origin_file,
+                                                 dataset_cfg['trajectory_number'])
 
-    # 2. Segment and Unify (This uses the benchmark config to generate 3500 paths!)
+    latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
+
+    # 2. Segment and Unify latent and raw paths together, so both share the same indices
+    joint_paths = []
+    for latent, real in zip(latent_paths, real_paths):
+        raw = torch.as_tensor(np.asarray(real), dtype=torch.float32).clone()
+        raw[:, 0:2] = raw[:, 0:2] * float(xy_scale) + torch.as_tensor(xy_center, dtype=torch.float32)
+        joint_paths.append(torch.cat([latent.detach().cpu(), raw], dim=1))
+    latent_dim = latent_paths[0].shape[1]
+
     segmented_paths = create_universal_segmented_dataset(
-        latent_paths,
+        joint_paths,
         min_window=dataset_cfg['min_window'],
         max_window=dataset_cfg['max_window'],
         samples_per_path=dataset_cfg['samples_per_path']
     )
-    final_paths = unify_time_steps(segmented_paths, time_steps=dataset_cfg['time_steps'])
+    final_paths = torch.stack(unify_time_steps(segmented_paths, time_steps=dataset_cfg['time_steps']))
 
-    # 3. Format as a single Ground Truth Tensor [3500, Time, 2]
-    new_ground = torch.stack(final_paths)
-
-    return new_ground
+    # 3. Split back into latent ground truth [B, T, 2] and ambient reference [B, T, dof]
+    return {
+        'latent': final_paths[:, :, :latent_dim],
+        'x_ambient': final_paths[:, :, latent_dim:],
+        'xy_center': torch.as_tensor(xy_center, dtype=torch.float32),
+        'xy_scale': float(xy_scale),
+    }
 
 # Export the benchmark datasets
-def save_test_config(z1, z2, ground_truth, filename="ground_truth.pt", directory="./benchmark/data"):
+def save_test_config(z1, z2, ground_truth, filename="ground_truth.pt", directory="./benchmark/data", extras=None):
     """
     Saves the essential test coordinates to disk.
     z1: [Batch, 2] or [2]
     z2: [Batch, 2] or [2]
     ground_truth: [Batch, Time, 2] or [Time, 2]
+    extras: optional dict of further tensors/floats to store (e.g. x_ambient, xy_center, xy_scale)
     """
     # 1. Create directory if it doesn't exist
     if not os.path.exists(directory):
@@ -70,6 +119,8 @@ def save_test_config(z1, z2, ground_truth, filename="ground_truth.pt", directory
         'ground_truth': ground_truth.detach().cpu(),
         'description': "Test set for Riemannian Proxy-Geodesic comparison"
     }
+    if extras:
+        data_to_save.update(extras)
     # 4. Save
     torch.save(data_to_save, full_path)
     print(f"✅ Benchmark data successfully archived at: {full_path}")
@@ -96,6 +147,39 @@ def load_test_config(filename="ground_truth.pt", directory="/benchmark/data"):
     print(f"📊 Benchmark Ground Truth Shape: {ground_truth.shape}")
 
     return z1, z2, ground_truth
+
+# Numpy-to-JSON Translator
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.generic):
+            return obj.item()  # Converts numpy float/int to standard Python float/int
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif torch.is_tensor(obj):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+def save_json(report, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(report, f, indent=4, cls=NumpyEncoder)
+    print(f"✅ Saved: {path}")
+
+# Load the full benchmark reference (latent ground truth + ambient demonstrations)
+def load_benchmark_reference(gt_data_path):
+    """The benchmark file as a dict: z1, z2, ground_truth, x_ambient, xy_center, xy_scale."""
+    if not os.path.exists(gt_data_path):
+        raise FileNotFoundError(f"❌ No file found at {gt_data_path}")
+
+    data = torch.load(gt_data_path, weights_only=True)
+    if 'x_ambient' not in data:
+        raise ValueError(f"❌ {gt_data_path} has no ambient reference (made by an older version): "
+                         f"delete it so run_benchmark.py regenerates it")
+
+    print(f"✅ Loaded benchmark reference from {gt_data_path}")
+    print(f"📊 Latent ground truth: {tuple(data['ground_truth'].shape)} | "
+          f"Ambient reference: {tuple(data['x_ambient'].shape)}")
+    return data
 
 # Function to save graph paths as .txt files or .csv files
 def save_latent_paths_node(proxy_geodesics, dir_name="./benchmark/results", file_name="node_latent_paths_BM.pt"):

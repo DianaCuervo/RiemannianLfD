@@ -6,12 +6,16 @@ toy:
     qua_dof: 3                # 3 for the Toy VAE
     sigma: 1e-6               # VAE's decoder scale for position data
     sigma_z: 1.0              # VAE's encoder scale
-    beta_scale: 10
+    #beta_scale: 10
+    beta_scale: '{beta}'
   training_artifacts:
     batch_size: 128
-    model_path: './models/vae/toy_example/VAE_toy.pt'
+#    model_path: './models/vae/toy_example/VAE_toy.pt'
+#    # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
+#    cluster_path: './datasets/Clusters/toy_example/clusters_toy.p'
+    model_path: './models/vae/toy_example/VAE_toy_beta_scale_{beta}.pt'
     # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
-    cluster_path: './datasets/Clusters/toy_example/clusters_toy.p'
+    cluster_path: './datasets/Clusters/toy_example/clusters_toy_beta_scale_{beta}.p'
   training:
     epochs: 1000       # Stage 1 (KL) and Stage 2 (reconstruction) epochs
     epochs_rbf: 1000    # Stage 3 (RBF variance networks) epochs

@@ -23,7 +23,8 @@ toy:
     max_window: 480
     samples_per_path: 50
     time_steps: 50
-    save_dir: './node/data/toy_processed'
+    # save_dir: './node/data/toy_processed'
+    save_dir: './node/data/toy_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
     train_rat: 0.7715
     val_rat: 0.087
     model_dir: './models/node/toy_example'

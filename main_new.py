@@ -292,11 +292,16 @@ def main_iterative_vae():
         vae_cfg = vae_cfg[args.task]
 
     original_path = vae_cfg['training_artifacts']['model_path']
-    # Replace the '{shape}/{task}' placeholder with the actual data from the command line
-    if args.dataset == 'lasa':
+    beta = args.beta_scale
+    beta_complement = 'beta_scale_' + beta
+    # Replace the '{shape}/{task}/{beta}' placeholder with the actual data from the command line
+    if args.dataset == 'toy':
+        # One VAE per beta_scale, as for lasa
+        vae_cfg['architecture']['beta_scale'] = float(beta)
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{beta}', str(beta))
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{beta}', str(beta))
+    elif args.dataset == 'lasa':
         dataset_shape = args.shape + '-Shape'
-        beta = args.beta_scale
-        beta_complement = 'beta_scale_' + beta
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape).replace('{beta}', str(beta))
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape).replace('{beta}', str(beta))
@@ -312,7 +317,8 @@ def main_iterative_vae():
     if args.dataset == 'toy':
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
-        full_name = f"{dataset_type}_"
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{beta}', str(beta))
+        full_name = f"{dataset_type}_{beta_complement}_"
         model_name = model_name_template.replace('{type}', full_name)
 
     if args.dataset == 'lasa':
@@ -457,7 +463,7 @@ def main_iterative_vae():
         # 1. Figure out where the model is saved based on the config
         model_dir = node_cfg['dataset'].get('model_dir', f"./models/node/{args.dataset}")
         model_path = os.path.join(model_dir, f"{model_name}.pth")
-        results_space = f"{dataset_type}"
+        results_space = f"{dataset_type} {beta_complement}"
         if dataset_type == "lasa":
             results_space = f"{dataset_shape} {beta_complement}"
 

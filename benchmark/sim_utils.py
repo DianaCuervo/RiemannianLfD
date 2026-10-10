@@ -10,10 +10,10 @@ from pathlib import Path
 import mujoco
 import numpy as np
 import torch
-from scipy.io import loadmat
 
 from stochman.manifold import EmbeddedManifold
 from GeodesicMotionSkills.Experiments.Utils.environment import Environment
+from benchmark.data_utils import load_lasa_demos  # noqa: F401 (re-exported for simulation_benchmark.py)
 
 
 # ==========================================
@@ -51,32 +51,6 @@ def as_embedded_manifold(vae):
 # ==========================================
 # LASA DEMONSTRATIONS
 # ==========================================
-def load_lasa_demos(origin_dir, origin_file, trajectory_number):
-    """Load LASA demos and return them normalized, plus the constants needed to undo it.
-
-    Mirrors node/data/preprocessing.py's get_demonstrations_paths_newVAE + normalize_newVAE
-    exactly -- one isotropic normalization shared across all demos -- but also hands back
-    xy_center/xy_scale, which preprocessing computes locally and discards. Without them we
-    cannot map a decoded trajectory back to real LASA units for the robot.
-    """
-    demoUQ = loadmat(f"{origin_dir}/{origin_file}")["demoUQ"]
-
-    raw_positions = [demoUQ[0, i]["tsPos"][0, 0].T for i in range(trajectory_number)]
-    raw_quats = [demoUQ[0, i]["quat"][0, 0].T for i in range(trajectory_number)]
-
-    all_xy = np.vstack([pos[:, 0:2] for pos in raw_positions])
-    xy_min, xy_max = all_xy.min(axis=0), all_xy.max(axis=0)
-    xy_center = (xy_min + xy_max) / 2
-    xy_scale = (xy_max - xy_min).max() / 2  # single scalar -> isotropic scaling
-
-    demos = []
-    for pos, quat in zip(raw_positions, raw_quats):
-        xy_norm = (pos[:, 0:2] - xy_center) / xy_scale
-        demos.append(np.hstack([xy_norm, pos[:, 2:3], quat]))
-
-    return demos, xy_center, xy_scale
-
-
 def to_workspace(pos_norm, xy_center, xy_scale, pos_xy_scale, offset=None):
     """Map normalized VAE positions into Panda workspace coordinates.
 

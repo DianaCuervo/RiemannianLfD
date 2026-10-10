@@ -4,8 +4,9 @@ The raw-data location comes from node_config.yaml's 'dataset' section; everythin
 from vae_config.yaml, with training/test settings overridable from the command line.
 
 Usage:
-    python vae_main.py --mode train --dataset lasa --shape N
-    python vae_main.py --mode test --dataset lasa --shape N --test_id 3
+    python vae_main.py --mode train --dataset toy --beta_scale 5
+    python vae_main.py --mode train --dataset lasa --shape N --beta_scale 5
+    python vae_main.py --mode test --dataset lasa --shape N --beta_scale 5 --test_id 3
     python vae_main.py --mode visualize --dataset lerobot --task pick
 """
 import argparse
@@ -47,6 +48,8 @@ def main():
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa', 'lerobot'])
     parser.add_argument('--shape', type=str, default=None, help="LASA shape (e.g. N, Angle)")
     parser.add_argument('--task', type=str, default=None, help="LEROBOT task (e.g. pick, place)")
+    parser.add_argument('--beta_scale', type=str, default='1',
+                        help="RBF beta scale for the toy/lasa VAE (e.g. 1, 5, 10); one VAE per value")
     parser.add_argument('--seed', type=int, default=4)
     parser.add_argument('--artifacts_dir', type=str, default=None,
                         help="Read/write the model and KMeans clusters in this folder instead of "
@@ -70,18 +73,19 @@ def main():
     args = parser.parse_args()
 
     # Initialize the VAE config and dataset config, with placeholders resolved
-    vae_cfg = load_vae_config(args.dataset, args.shape, args.task)
+    vae_cfg = load_vae_config(args.dataset, args.shape, args.task, beta=args.beta_scale)
     dataset_cfg = load_dataset_config(args.dataset, args.shape, args.task)
 
     artifacts = vae_cfg['training_artifacts']
     if args.artifacts_dir:
         for key in ('model_path', 'cluster_path'):
             artifacts[key] = os.path.join(args.artifacts_dir, os.path.basename(artifacts[key]))
-    vae_name = os.path.splitext(os.path.basename(artifacts['model_path']))[0]  # e.g. VAE_N-Shape
+    vae_name = os.path.splitext(os.path.basename(artifacts['model_path']))[0]  # e.g. VAE_toy_beta_scale_5
 
     sys.stdout = ConsoleLogger()
     sys.stdout.set_log_file(save_dir=LOGS_DIR, model_name=f"{vae_name}_{args.mode}")
-    print(f"Starting VAE {args.mode} for Dataset: {args.dataset.upper()} | {vae_name} | Seed: {args.seed}")
+    print(f"Starting VAE {args.mode} for Dataset: {args.dataset.upper()} | {vae_name} | "
+          f"beta_scale: {vae_cfg['architecture'].get('beta_scale')} | Seed: {args.seed}")
     set_seed(args.seed)
 
     if args.mode == 'train':

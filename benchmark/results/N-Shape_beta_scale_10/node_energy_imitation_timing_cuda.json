@@ -1,0 +1,20 @@
+{
+    "framework": "NODE",
+    "variant": "energy_imitation",
+    "device": "cuda",
+    "warmup_queries": 10,
+    "per_query": {
+        "n": 140,
+        "median_s": 0.0816835439982242,
+        "q25_s": 0.08123950874960428,
+        "q75_s": 0.08273643124903174,
+        "iqr_s": 0.0014969224994274555,
+        "mean_s": 0.08220919172846541,
+        "total_s": 11.509286841985158
+    },
+    "batched_throughput": {
+        "num_queries": 140,
+        "total_s": 0.084421209001448,
+        "per_query_equivalent_s": 0.0006030086357246286
+    }
+}

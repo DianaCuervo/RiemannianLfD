@@ -6,17 +6,20 @@ VAE_CONFIG_PATH = 'config_files/vae_config.yaml'
 NODE_CONFIG_PATH = 'config_files/node_config.yaml'
 
 
-def _placeholders(dataset, shape=None, task=None):
-    """The {shape}/{task} substitutions main.py applies, after validating the CLI input."""
+def _placeholders(dataset, shape=None, task=None, beta=None):
+    """The {shape}/{task}/{beta} substitutions main_new.py applies, after validating the CLI input."""
+    placeholders = {}
     if dataset == 'lasa':
         if not shape:
             raise ValueError("--shape is required for the lasa dataset (e.g. --shape N)")
-        return {'{shape}': f"{shape}-Shape"}
+        placeholders['{shape}'] = f"{shape}-Shape"
     if dataset == 'lerobot':
         if not task:
             raise ValueError("--task is required for the lerobot dataset (e.g. --task pick)")
-        return {'{task}': task}
-    return {}
+        placeholders['{task}'] = task
+    if beta is not None:
+        placeholders['{beta}'] = str(beta)
+    return placeholders
 
 
 def _substitute(value, placeholders):
@@ -42,12 +45,26 @@ def _select(config, dataset, task, file_path):
     return copy.deepcopy(selected)
 
 
-def load_vae_config(dataset, shape=None, task=None):
-    """The VAE config for one dataset (and lerobot task), with placeholders resolved."""
+def load_vae_config(dataset, shape=None, task=None, beta=None):
+    """The VAE config for one dataset (and lerobot task), with placeholders resolved.
+
+    beta: the RBF beta_scale (e.g. '1', '5', '10') for configs with one VAE per beta_scale
+    (toy, lasa), which fills their '{beta}' paths and architecture.beta_scale.
+    """
     with open(VAE_CONFIG_PATH, 'r') as file:
         full_config = yaml.safe_load(file)
     vae_cfg = _select(full_config, dataset, task, VAE_CONFIG_PATH)
-    return _substitute(vae_cfg, _placeholders(dataset, shape, task))
+    vae_cfg = _substitute(vae_cfg, _placeholders(dataset, shape, task, beta))
+
+    unresolved = [key for key, value in vae_cfg['training_artifacts'].items()
+                  if isinstance(value, str) and '{beta}' in value]
+    if '{beta}' in str(vae_cfg['architecture'].get('beta_scale', '')):
+        unresolved.append('beta_scale')
+    if unresolved:
+        raise ValueError(f"--beta_scale is required for the {dataset} dataset ('{{beta}}' in {unresolved})")
+    if 'beta_scale' in vae_cfg['architecture']:
+        vae_cfg['architecture']['beta_scale'] = float(vae_cfg['architecture']['beta_scale'])
+    return vae_cfg
 
 
 def load_dataset_config(dataset, shape=None, task=None):

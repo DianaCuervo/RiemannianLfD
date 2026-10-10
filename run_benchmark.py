@@ -4,7 +4,9 @@ import yaml
 import torch
 import copy
 
-from benchmark.data_utils import generate_benchmark_dataset, save_test_config, load_test_config
+from benchmark.data_utils import generate_benchmark_dataset, save_test_config, load_benchmark_reference, save_json
+from benchmark.metrics import decode_latente_paths, calculate_ambient_metrics
+from benchmark.off_manifold import get_off_manifold_reference, reference_summary, off_manifold_rates
 from benchmark.eval_graph import run_graph_benchmark
 from benchmark.eval_node import run_node_benchmark
 from benchmark.eval_stochman import run_stochman_benchmark
@@ -66,6 +68,12 @@ def load_respective_vae(args, device):
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
     vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape)
     vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape)
+    # One VAE per beta_scale (as main_new.py's main_iterative_vae)
+    if args.dataset in ('toy', 'lasa'):
+        beta = args.beta_scale
+        vae_cfg['architecture']['beta_scale'] = float(beta)
+        vae_cfg['training_artifacts']['model_path'] = vae_cfg['training_artifacts']['model_path'].replace('{beta}', str(beta))
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{beta}', str(beta))
     vae_path = vae_cfg['training_artifacts']['model_path']
     print(f"Loading VAE from: {vae_path}")
 
@@ -95,9 +103,9 @@ def load_respective_vae(args, device):
 # ==========================================
 # DATASET PREPARATION
 # ==========================================
-def prepare_benchmark_data(dataset_cfg, args, device):
+def prepare_benchmark_data(dataset_cfg, args, device, vae_model):
     """Checks if the dataset exists; if not, generates it using the VAE."""
-    gt_data_path = dataset_cfg['gt_data'].replace('{shape}', args.shape)
+    gt_data_path = dataset_cfg['gt_data']
     directory = os.path.dirname(gt_data_path)
     filename = os.path.basename(gt_data_path)
 
@@ -107,25 +115,38 @@ def prepare_benchmark_data(dataset_cfg, args, device):
 
     print(f"⚠️ Benchmark dataset not found at {gt_data_path}. Generating now...")
 
-    # 1. Load VAE
-    print("Loading VAE for dataset generation...")
-    vae_model = load_respective_vae(args, device)
-
-    # 2. Generate the Data
+    # 1. Generate the Data (latent ground truth + raw demonstration segments)
     print("Slicing and processing benchmark segments...")
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
 
-    ground_truth = generate_benchmark_dataset(dataset_cfg, dataset_shape, vae_model, device)
+    reference = generate_benchmark_dataset(dataset_cfg, dataset_shape, vae_model, device)
+    ground_truth = reference['latent']
 
-    # 3. Save it
+    # 2. Save it
     z1 = ground_truth[:, 0, :]
     z2 = ground_truth[:, -1, :]
-    save_test_config(z1, z2, ground_truth, filename=filename, directory=directory)
+    save_test_config(z1, z2, ground_truth, filename=filename, directory=directory,
+                     extras={k: reference[k] for k in ('x_ambient', 'xy_center', 'xy_scale')})
     print("✅ Benchmark dataset generated and secured!")
 
     # Ploting benchmark paths
-    z1, z2, gt = load_test_config(filename=filename, directory=directory, )
-    plot_trajectories(gt)
+    plot_trajectories(ground_truth)
+
+def save_reference_results(bench, vae_model, results_dir):
+    """Method-independent rows: the VAE reconstruction floor and the off-manifold reference."""
+    print("\n📏 VAE reconstruction error (the floor no method can beat)...")
+    reconstruction = calculate_ambient_metrics(
+        decode_latente_paths(vae_model, bench['ground_truth']), bench['x_ambient'],
+        bench['xy_center'], bench['xy_scale'], vae_model.pos_dof
+    )
+    save_json({"shape": bench['shape'], "beta_scale": bench['beta'], "ambient_metrics": reconstruction},
+              os.path.join(results_dir, "vae_reconstruction_metrics.json"))
+
+    print("\n🧭 Off-manifold % of the latent ground truth (sanity row, at its T points)...")
+    save_json({"shape": bench['shape'], "beta_scale": bench['beta'],
+               **reference_summary(bench['off_ref']),
+               "ground_truth_rates": off_manifold_rates(vae_model, bench['ground_truth'], bench['off_ref'])},
+              os.path.join(results_dir, "off_manifold_reference.json"))
 
 def main():
     print("\n" + "=" * 50)
@@ -142,27 +163,66 @@ def main():
                         help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None',
                         help="Specific shape for LASA (e.g., N, Angle)")
+    parser.add_argument('--beta_scale', type=str, default='1',
+                        help="Specific beta scale for the toy/LASA VAE (e.g., 1, 5, 10)")
+    parser.add_argument('--node_variants', type=str, nargs='+', default=None,
+                        help="NODE run_suffix values to evaluate (e.g., energy_imitation energy_only); "
+                             "default: the run_suffix in node_config.yaml")
+    parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cpu', 'cuda'],
+                        help="Device for inference and timing")
     args = parser.parse_args()
 
     # 2. Load Configuration and Setup Device
     dataset_cfg = load_benchmark_config("config_files/benchmark_config.yaml", args.dataset)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    if args.device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    else:
+        device = args.device
 
-    # 3. Trigger dataset safety check & generation
-    print("\n Preparing datasets...")
-    prepare_benchmark_data(dataset_cfg, args, device)
+    # Resolve {shape}/{beta} once: every evaluator reads these paths as they are
+    beta = args.beta_scale if args.dataset in ('toy', 'lasa') else None
+    for key in ('benchmark_dir', 'gt_data'):
+        dataset_cfg[key] = dataset_cfg[key].replace('{shape}', args.shape).replace('{beta}', str(beta))
+
+    # 3. Load the VAE, then trigger dataset safety check & generation
     print("\n Preparing Latent Space...")
     vae_model = load_respective_vae(args, device)
-
-    print("\n✅ Setup complete! Ready to run framework evaluations.")
+    print("\n Preparing datasets...")
+    prepare_benchmark_data(dataset_cfg, args, device, vae_model)
 
     # 4. Setup Results Directory
     dataset_name_with_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.dataset
+    if beta is not None:
+        dataset_name_with_shape = f"{dataset_name_with_shape}_beta_scale_{beta}"
     results_dir = os.path.join(dataset_cfg['results_base_dir'], dataset_name_with_shape)
     os.makedirs(results_dir, exist_ok=True)
     print(f"\n✅ Creating {results_dir} to save benchmark results.")
 
-    # 5. Route to the correct evaluation script
+    # 5. Shared inputs of every framework: reference data, off-manifold reference, NODE config
+    reference = load_benchmark_reference(dataset_cfg['gt_data'])
+    off_ref = get_off_manifold_reference(vae_model, args.dataset, args.shape,
+                                         os.path.join(dataset_cfg['benchmark_dir'], 'off_manifold_reference.pt'))
+    title = args.dataset.upper() if args.shape in ['None'] else f"{args.shape}-Shape"
+    if beta is not None:
+        title = f"{title} beta_scale_{beta}"
+    bench = {
+        'shape': args.shape,
+        'beta': beta,
+        'title': title,
+        'z1': reference['z1'].to(device),
+        'z2': reference['z2'].to(device),
+        'ground_truth': reference['ground_truth'].to(device),
+        'x_ambient': reference['x_ambient'],
+        'xy_center': reference['xy_center'],
+        'xy_scale': reference['xy_scale'],
+        'off_ref': off_ref,
+        'node_cfg': load_training_config('config_files/node_config.yaml', args.dataset, args.shape),
+    }
+    save_reference_results(bench, vae_model, results_dir)
+
+    print("\n✅ Setup complete! Ready to run framework evaluations.")
+
+    # 6. Route to the correct evaluation script
     frameworks_to_run = ['node', 'stochman', 'graph'] if args.framework == 'all' else [args.framework]
 
     for fw in frameworks_to_run:
@@ -172,14 +232,16 @@ def main():
         fw_cfg = dataset_cfg['frameworks'][fw]
 
         if fw == 'node':
-            print("NODE evaluation...")
-            run_node_benchmark(dataset_cfg, fw_cfg, args.dataset, args.shape, results_dir, device, vae_model)
+            node_variants = args.node_variants or [bench['node_cfg'].get('run_suffix')]
+            for variant in node_variants:
+                print(f"NODE evaluation ({variant})...")
+                run_node_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_model, run_suffix=variant)
         elif fw == 'graph':
             print("Graph evaluation...")
-            run_graph_benchmark(dataset_cfg, fw_cfg, args.dataset, args.shape, results_dir, device, vae_model)
+            run_graph_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_model)
         elif fw == 'stochman':
             print("Stochman evaluation...")
-            run_stochman_benchmark(dataset_cfg, fw_cfg, args.dataset, args.shape, results_dir, device, vae_model)
+            run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_model)
 
     print("\n" + "=" * 50)
     print("✅ All requested benchmarks completed successfully!")

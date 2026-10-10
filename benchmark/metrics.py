@@ -48,8 +48,8 @@ def decode_latente_paths(vae_model, latent_paths):
             # print(pos_dist.mean.shape, qua_dist.loc.shape)
 
             p_m = pos_dist.mean  # [128, 3]
-            q_m = qua_dist.mean  # [128, 2/4] #--> Original line
-            # q_d = qua_dist.loc  # [128, 2/4]
+            # q_m = qua_dist.mean  # [128, 2/4] #--> Original line: vMF mean is loc shrunk by a Bessel ratio < 1
+            q_m = qua_dist.loc  # [128, 2/4] unit-norm mode, as decode_latent_goals
             # print(f"p_m shape: {p_m.shape}, q_m shape: {q_m.shape}, q_d shape: {q_d.shape}")
 
             combined = torch.cat([p_m, q_m], dim=-1)
@@ -478,4 +478,133 @@ def calculate_euclidean_metrics(predicted_paths, ground_paths, predicted_goals, 
         "Imitation_Ori_MSE": float(loss_imitation_ori),
         "Goal_Pos_MSE": float(loss_goal_pos),
         "Goal_Ori_MSE": float(loss_goal_ori)
+    }
+
+
+
+# ==========================================
+# AMBIENT METRICS (against the raw demonstrations)
+# ==========================================
+def to_original_units(decoded_paths, xy_center, xy_scale):
+    """Undo normalize_newVAE on decoded paths [..., dof]: xy * xy_scale + xy_center, rest unchanged."""
+    paths = np.array(decoded_paths, dtype=np.float64, copy=True)
+    paths[..., 0:2] = paths[..., 0:2] * float(xy_scale) + np.asarray(xy_center, dtype=np.float64)
+    return paths
+
+
+def resample_by_arc_length(paths, num_points=None):
+    """Resample each path [B, T, d] to num_points points spaced uniformly in arc length."""
+    B, T, d = paths.shape
+    num_points = num_points or T
+    s_new = np.linspace(0.0, 1.0, num_points)
+    out = np.empty((B, num_points, d))
+    for i in range(B):
+        seg = np.linalg.norm(np.diff(paths[i], axis=0), axis=1)
+        s = np.concatenate([[0.0], np.cumsum(seg)])
+        if s[-1] <= 0:  # degenerate path that never moves
+            out[i] = paths[i, :1]
+            continue
+        s = s / s[-1]
+        for k in range(d):
+            out[i, :, k] = np.interp(s_new, s, paths[i, :, k])
+    return out
+
+
+def orientation_angle(q_pred, q_true):
+    """Angle in radians between orientations [..., k]: 2*arccos(|<q,q'>|) for quaternions (k=4,
+    the absolute value handles the q/-q ambiguity), the geodesic arccos(<q,q'>) on S2 (k=3)."""
+    q_pred = q_pred / np.linalg.norm(q_pred, axis=-1, keepdims=True)
+    q_true = q_true / np.linalg.norm(q_true, axis=-1, keepdims=True)
+    dot = np.sum(q_pred * q_true, axis=-1)
+    if q_pred.shape[-1] == 4:
+        return 2.0 * np.arccos(np.clip(np.abs(dot), 0.0, 1.0))
+    return np.arccos(np.clip(dot, -1.0, 1.0))
+
+
+def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos_dof):
+    """
+    Goal / imitation errors of decoded paths against the raw demonstration segments, in original units.
+
+    decoded_paths: [B, T, dof] decoder means (normalized units, decode_latente_paths)
+    x_ambient:     [B, T, dof] raw demonstration segments (original units)
+    Position errors are squared Euclidean norms over the pos_dof coordinates (summed, not averaged).
+    """
+    if torch.is_tensor(x_ambient): x_ambient = x_ambient.detach().cpu().numpy()
+    pred = to_original_units(decoded_paths, xy_center, xy_scale)
+    true = np.asarray(x_ambient, dtype=np.float64)
+
+    pred_pos, true_pos = pred[:, :, :pos_dof], true[:, :, :pos_dof]
+    pred_ori, true_ori = pred[:, :, pos_dof:], true[:, :, pos_dof:]
+
+    goal_sq = np.sum((pred_pos[:, -1] - true_pos[:, -1]) ** 2, axis=-1)                  # [B]
+    imit_sq = np.sum((pred_pos - true_pos) ** 2, axis=-1)                                  # [B, T]
+    # Time-free: same MSE after both curves are resampled uniformly in arc length
+    arc_sq = np.sum((resample_by_arc_length(pred_pos) - resample_by_arc_length(true_pos)) ** 2, axis=-1)
+
+    goal_ang = np.degrees(orientation_angle(pred_ori[:, -1], true_ori[:, -1]))             # [B]
+    imit_ang = np.degrees(orientation_angle(pred_ori, true_ori))                           # [B, T]
+
+    report = {
+        "Goal_MSE": float(goal_sq.mean()),
+        "Imitation_MSE": float(imit_sq.mean()),
+        "Imitation_MSE_ArcLength": float(arc_sq.mean()),
+        "Goal_Ori_Angle_deg": float(goal_ang.mean()),
+        "Imitation_Ori_Angle_deg": float(imit_ang.mean()),
+        # Per-query spreads, for error bars
+        "Goal_MSE_Std": float(goal_sq.std()),
+        "Imitation_MSE_Std": float(imit_sq.mean(axis=1).std()),
+        "Imitation_MSE_ArcLength_Std": float(arc_sq.mean(axis=1).std()),
+    }
+
+    print(f"--- Ambient Metric Report ({pred.shape[0]} paths, original units) ---")
+    print(f"Goal MSE:                 {report['Goal_MSE']:.6f}")
+    print(f"Imitation MSE:            {report['Imitation_MSE']:.6f}")
+    print(f"Imitation MSE (arc len):  {report['Imitation_MSE_ArcLength']:.6f}")
+    print(f"Goal orientation angle:   {report['Goal_Ori_Angle_deg']:.3f} deg")
+    print(f"Imitation orient. angle:  {report['Imitation_Ori_Angle_deg']:.3f} deg")
+    return report
+
+
+# Keys of calculate_ground_metrics_chuncked that are placeholders until the density code is restored
+_PLACEHOLDER_KEYS = ("Violation_Rate", "Violation_Mean", "Violation_Std", "Avg_Energy_Pred", "Avg_Energy_GT")
+
+
+def evaluate_predictions(pred_latent, dense_latent, bench, vae_model):
+    """
+    All benchmark metrics of one method's latent paths.
+
+    pred_latent:  [B, T, 2] latent paths at the ground truth's T time steps
+    dense_latent: [B, S, 2] the same paths sampled densely (S = 200) for the off-manifold %
+    bench:        the shared benchmark inputs built by run_benchmark.py
+    """
+    from benchmark.off_manifold import off_manifold_rates
+
+    ground_truth = bench['ground_truth']
+    pred_latent = torch.as_tensor(pred_latent, dtype=torch.float32).to(ground_truth.device)
+
+    # A method that stopped early (e.g. stochman's break on failure) is scored on the queries it answered
+    n = pred_latent.shape[0]
+    if n < ground_truth.shape[0]:
+        print(f"⚠️ Only {n}/{ground_truth.shape[0]} queries answered: metrics cover those only")
+
+    print("\n📊 Calculating Latent Space Metrics...")
+    latent_metrics = calculate_ground_metrics_chuncked(
+        pred_latent, ground_truth[:n], bench['z2'][:n], vae_model, density_threshold=1.5, chunk_size=50
+    )
+    latent_metrics = {k: v for k, v in latent_metrics.items() if k not in _PLACEHOLDER_KEYS}
+
+    print("\n📏 Decoding to Ambient Space...")
+    ambient_metrics = calculate_ambient_metrics(
+        decode_latente_paths(vae_model, pred_latent), bench['x_ambient'][:n],
+        bench['xy_center'], bench['xy_scale'], vae_model.pos_dof
+    )
+
+    print("\n🧭 Calculating Off-manifold %...")
+    off_manifold = off_manifold_rates(vae_model, dense_latent, bench['off_ref'])
+
+    return {
+        "num_queries_answered": n,
+        "latent_metrics": latent_metrics,
+        "ambient_metrics": ambient_metrics,
+        "off_manifold": off_manifold,
     }
