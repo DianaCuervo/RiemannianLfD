@@ -37,6 +37,7 @@ datasets:
     max_window: 980
     samples_per_path: 50
     time_steps: 100
+    noise_std: 0.001
     # Benchmark-specific save paths (dynamically replaces {shape} and {beta}): the latent
     # ground truth is encoded with one VAE, so every beta_scale gets its own file
     benchmark_dir: './benchmark/data/lasa_{shape}_beta_scale_{beta}'
