@@ -11,10 +11,10 @@ run_dataset() {
         echo "🚀 STARTING OVERNIGHT RUN FOR: Dataset=$dataset | Shape=$shape"
         echo "================================================================="
 
-        python vae_main.py --mode train --dataset $dataset --shape $shape --overwrite
-        python vae_main.py --mode test --dataset $dataset --shape $shape --num_segments 0
+        python vae_main.py --mode train --dataset $dataset --task $shape --overwrite
+        python vae_main.py --mode test --dataset $dataset --task $shape --num_segments 0
         # python run_benchmark.py --framework stochman --dataset lasa --shape $shape
-        python vae_main.py --mode visualize --dataset $dataset --shape $shape
+        python vae_main.py --mode visualize --dataset $dataset --task $shape
 
         echo "✅ Finished training for $dataset - $shape!"
         echo ""
@@ -25,23 +25,23 @@ run_dataset() {
 # 1. Define shapes for LASA
 # ---------------------------------------------------------
 # LASA_SHAPES=("Angle" "P" "Leaf_1")
-LASA_SHAPES=("N" "Sine")
+# LASA_SHAPES=("N" "Sine")
 
 # LASA_SHAPES=("P")
-# TASKS=("pick" "place")
+TASKS=("pick" "place")
 
 # # ---------------------------------------------------------
 # # 2. Define shapes for TOY
 # # (Change these placeholder names to your actual toy shapes)
 # # (the toy beta_scale is selected in config_files/vae_config.yaml)
 # # ---------------------------------------------------------
-TOY_SHAPES=("None")
+# TOY_SHAPES=("None")
 
 # ---------------------------------------------------------
 # Execute the runs
 # ---------------------------------------------------------
-# run_dataset "lerobot" "${TASKS[@]}"
+run_dataset "lerobot" "${TASKS[@]}"
 # run_dataset "lasa" "${LASA_SHAPES[@]}"
-run_dataset "toy" "${TOY_SHAPES[@]}"
+# run_dataset "toy" "${TOY_SHAPES[@]}"
 
 echo "🎉 ALL OVERNIGHT TRAINING RUNS COMPLETED!"

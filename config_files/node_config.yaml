@@ -242,7 +242,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_processed'
+      save_dir: './node/data/{task}_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
       min_window: 150
       max_window: 950
       samples_per_path: 50
@@ -294,7 +294,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_processed'
+      save_dir: './node/data/{task}_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
       min_window: 150
       max_window: 950
       samples_per_path: 50

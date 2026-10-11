@@ -54,7 +54,7 @@ def load_vae_config(dataset, shape=None, task=None, beta=None):
     """The VAE config for one dataset (and lerobot task), with placeholders resolved.
 
     The '{beta}' of the file names comes from architecture.beta_scale when the config sets
-    it to a number (toy: select it in vae_config.yaml only). A config that leaves it as
+    it to a number (toy, lerobot: select it in vae_config.yaml only). A config that leaves it as
     '{beta}' (lasa) takes it from `beta` instead (the --beta_scale CLI argument).
     """
     with open(VAE_CONFIG_PATH, 'r') as file:

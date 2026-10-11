@@ -3,7 +3,7 @@
 The raw-data location comes from node_config.yaml's 'dataset' section; everything else
 from vae_config.yaml, with training/test settings overridable from the command line.
 
-The toy beta_scale is selected in vae_config.yaml only; lasa's comes from --beta_scale.
+The toy and lerobot beta_scale is selected in vae_config.yaml only; lasa's comes from --beta_scale.
 
 Usage:
     python vae_main.py --mode train --dataset toy
@@ -52,7 +52,7 @@ def main():
     parser.add_argument('--task', type=str, default=None, help="LEROBOT task (e.g. pick, place)")
     parser.add_argument('--beta_scale', type=str, default=None,
                         help="RBF beta scale for the lasa VAE (e.g. 1, 5, 10); one VAE per value. "
-                             "The toy one is selected in vae_config.yaml")
+                             "The toy and lerobot ones are selected in vae_config.yaml")
     parser.add_argument('--seed', type=int, default=4)
     parser.add_argument('--artifacts_dir', type=str, default=None,
                         help="Read/write the model and KMeans clusters in this folder instead of "

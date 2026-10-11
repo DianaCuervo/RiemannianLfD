@@ -88,10 +88,18 @@ def generate_benchmark_original_dataset(dataset_cfg, shape_name, vae_model, devi
 
     ### Encoded benchmark data creation
     # 1. Locate the directory where the Neural ODE training data was saved
-    processed_dir = dataset_cfg['save_dir_node_processed'].replace('{shape}', shape_name)
+    processed_dir = dataset_cfg.get('save_dir_node_processed')
+    
     # 2. Load the (Start, Goal) pairs that the model has already seen
     print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
-    existing_starts, existing_goals = load_existing_start_goals(processed_dir)
+    if processed_dir:
+            processed_dir = processed_dir.replace('{shape}', shape_name)
+            existing_starts, existing_goals = load_existing_start_goals(processed_dir)
+    else:
+        print("⚠️ Warning: 'save_dir_node_processed' not specified in config. Skipping duplicate check.")
+        existing_starts, existing_goals = None, None
+    
+    # existing_starts, existing_goals = load_existing_start_goals(processed_dir)
     # 3. Generate the novel benchmark segments safely
     print("\n--- 3. Generating Benchmark Paths ---")
     benchmark_segments = create_benchmark_segments(
@@ -276,10 +284,16 @@ def generate_benchmark_noisy_dataset(dataset_cfg, shape_name, vae_model, device)
 
     ### Encoded benchmark data creation
     # 1. Locate the directory where the Neural ODE training data was saved
-    processed_dir = dataset_cfg['save_dir_node_processed'].replace('{shape}', shape_name)
+    processed_dir = dataset_cfg.get('save_dir_node_processed')
     # 2. Load the (Start, Goal) pairs that the model has already seen
     print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
-    existing_starts, existing_goals = load_existing_start_goals(processed_dir)
+    if processed_dir:
+            processed_dir = processed_dir.replace('{shape}', shape_name)
+            existing_starts, existing_goals = load_existing_start_goals(processed_dir)
+    else:
+        print("⚠️ Warning: 'save_dir_node_processed' not specified in config. Skipping duplicate check.")
+        existing_starts, existing_goals = None, None
+    # existing_starts, existing_goals = load_existing_start_goals(processed_dir)
     # 3. Generate the novel benchmark segments safely
     print("\n--- 3. Generating Benchmark Paths ---")
     benchmark_segments = create_benchmark_segments(

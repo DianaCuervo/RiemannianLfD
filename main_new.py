@@ -277,7 +277,7 @@ def main_iterative_vae():
     parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
     parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
     parser.add_argument('--beta_scale', type=str, default='1',
-                        help='Specific beta scale for the lasa VAE (e.g., 1, 5, 10); the toy one is selected in vae_config.yaml')
+                        help='Specific beta scale for the lasa VAE (e.g., 1, 5, 10); the toy and lerobot ones are selected in vae_config.yaml')
     args = parser.parse_args()
 
     if args.dataset == 'lasa':
@@ -295,8 +295,8 @@ def main_iterative_vae():
 
     original_path = vae_cfg['training_artifacts']['model_path']
     beta = args.beta_scale
-    if args.dataset == 'toy':
-        # The toy beta_scale is selected in vae_config.yaml only (--beta_scale is for lasa)
+    if args.dataset in ('toy', 'lerobot'):
+        # The toy and lerobot beta_scale is selected in vae_config.yaml only (--beta_scale is for lasa)
         beta = beta_label(vae_cfg['architecture']['beta_scale'])
     beta_complement = 'beta_scale_' + beta
     # Replace the '{shape}/{task}/{beta}' placeholder with the actual data from the command line
@@ -312,8 +312,9 @@ def main_iterative_vae():
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape).replace('{beta}', str(beta))
     elif args.dataset == 'lerobot':
         dataset_task = args.task
-        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task)
-        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{task}', dataset_task)
+        vae_cfg['architecture']['beta_scale'] = float(beta)
+        vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task).replace('{beta}', str(beta))
+        vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{task}', dataset_task).replace('{beta}', str(beta))
     print(f"Loading VAE from: {vae_cfg['training_artifacts']['model_path']}")
 
     # Load node_config
@@ -341,8 +342,8 @@ def main_iterative_vae():
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
         node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{task}', dataset_task)
-        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', dataset_task)
-        full_name = f"{dataset_type}_{dataset_task}_"
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', dataset_task).replace('{beta}', str(beta))
+        full_name = f"{dataset_type}_{dataset_task}_{beta_complement}_"
         model_name = model_name_template.replace('{task}', full_name)
 
     # Optional suffix to keep different loss setups apart (e.g. 'imitation_only'):
