@@ -1,6 +1,8 @@
 # config_files/node_config.yaml
 toy:
   default_shape:  # Toy might not have 'shapes', so we use a default key
+  # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+  run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
   # Model Architecture Parameters
   architecture:
     latent_dim: 2
@@ -23,7 +25,7 @@ toy:
     max_window: 480
     samples_per_path: 50
     time_steps: 50
-    save_dir: './node/data/toy_processed'
+    save_dir: './node/data/{type}_processed'
     train_rat: 0.7715
     val_rat: 0.087
     model_dir: './models/node/toy_example'
@@ -38,15 +40,15 @@ toy:
     lr_drop_fraction: 0.75
     batch_size: 32
     epochs: 10 #4000
-    metric_scale_energy: 1e-8     # Energy loss scaling factor
-    safe_baseline: 3867617.82     # Average Energy from demonstrations
+    metric_scale_energy: 'metric_scale_energy_dummy'    # Energy loss scaling factor
+    safe_baseline: 'safe_baseline_dummy'                # Average Energy from demonstrations
     metric_clamp_max: 1e6         # Centralized metric ceiling
-    metric_clamp_min: 1e-3        # Centralized metric ceiling
+    metric_clamp_min: 1e-6        # Centralized metric ceiling
     grad_clip_norm: 0.5           # Gradient clipping threshold
     scheduler:
-      base_scale: 0.0001   # 1e-4
+      base_scale: 1.0   # 1e-4
       ramp_start: 500      # Epoch when goal/energy pressure begins
-      ramp_length: 2500    # How many epochs it takes to reach max weights
+      ramp_length: 1000    # How many epochs it takes to reach max weights
       w_imit_target: 1.0   # Constant multiplier for imitation
       w_goal_start: 1.0    # What goal weight starts at when ramp begins
       w_goal_target: 50.0  # What goal weight ramps up to
