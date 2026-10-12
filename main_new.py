@@ -309,6 +309,7 @@ def main_iterative_vae():
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape).replace('{beta}', str(beta))
     elif args.dataset == 'lerobot':
         dataset_task = args.task
+        beta = args.beta_scale
         beta_complement = 'beta_scale_' + beta
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task).replace('{beta}', str(beta))
