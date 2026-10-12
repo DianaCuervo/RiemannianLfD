@@ -522,6 +522,17 @@ def orientation_angle(q_pred, q_true):
     return np.arccos(np.clip(dot, -1.0, 1.0))
 
 
+def dtw_from_cost(cost):
+    """DTW total cost from a local cost matrix [T, S]: the cheapest monotone alignment of the two paths."""
+    T, S = cost.shape
+    D = np.full((T + 1, S + 1), np.inf)
+    D[0, 0] = 0.0
+    for i in range(1, T + 1):
+        for j in range(1, S + 1):
+            D[i, j] = cost[i - 1, j - 1] + min(D[i - 1, j], D[i, j - 1], D[i - 1, j - 1])
+    return D[T, S]
+
+
 def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos_dof):
     """
     Goal / imitation errors of decoded paths against the raw demonstration segments, in original units.
@@ -552,11 +563,13 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
         dtw_distances_pos.append(distance)
     dtw_distances_pos = np.array(dtw_distances_pos)  # [B]
 
-    # dtw_distances_ori = []
-    # for i in range(pred_ori.shape[0]):
-    #     distance = dtw_ndim.distance(pred_ori[i], true_ori[i])
-    #     dtw_distances_ori.append(distance)
-    # dtw_distances_ori = np.array(dtw_distances_ori)  # [B]
+    # Orientation DTW on the geodesic angle (sign-safe for quaternions), in degrees per step
+    dtw_distances_ori = []
+    for i in range(pred_ori.shape[0]):
+        cost = orientation_angle(pred_ori[i][:, None], true_ori[i][None, :])  # [T, T]
+        distance = np.degrees(dtw_from_cost(cost) / pred_ori.shape[1])
+        dtw_distances_ori.append(distance)
+    dtw_distances_ori = np.array(dtw_distances_ori)  # [B]
 
     report = {
         "Goal_MSE": float(goal_sq.mean()),
@@ -569,7 +582,7 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
         "Imitation_MSE_Std": float(imit_sq.mean(axis=1).std()),
         "Imitation_MSE_ArcLength_Std": float(arc_sq.mean(axis=1).std()),
         "Positional DTW_Distance": float(dtw_distances_pos.mean()),
-        # "Orientation DTW_Distance": float(dtw_distances_ori.mean()),
+        "Orientation DTW_Distance": float(dtw_distances_ori.mean()),
     }
 
     print(f"--- Ambient Metric Report ({pred.shape[0]} paths, original units) ---")
@@ -579,7 +592,7 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
     print(f"Goal orientation angle:   {report['Goal_Ori_Angle_deg']:.3f} deg")
     print(f"Imitation orient. angle:  {report['Imitation_Ori_Angle_deg']:.3f} deg")
     print(f"DTW Distance (positions):             {report['Positional DTW_Distance']:.6f}")
-    # print(f"DTW Distance (orientations):            {report['Orientation DTW_Distance']:.6f}")
+    print(f"DTW Distance (orientations):          {report['Orientation DTW_Distance']:.3f} deg")
     return report
 
 
