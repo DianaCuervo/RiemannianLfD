@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from dtaidistance import dtw_ndim
 
 
 # ==========================================
@@ -544,6 +545,19 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
     goal_ang = np.degrees(orientation_angle(pred_ori[:, -1], true_ori[:, -1]))             # [B]
     imit_ang = np.degrees(orientation_angle(pred_ori, true_ori))                           # [B, T]
 
+    # Implementing DTW for trajectory shape similarity (optional, can be commented out if not needed)
+    dtw_distances_pos = []
+    for i in range(pred_pos.shape[0]):
+        distance = dtw_ndim.distance(pred_pos[i], true_pos[i])
+        dtw_distances_pos.append(distance)
+    dtw_distances_pos = np.array(dtw_distances_pos)  # [B]
+
+    # dtw_distances_ori = []
+    # for i in range(pred_ori.shape[0]):
+    #     distance = dtw_ndim.distance(pred_ori[i], true_ori[i])
+    #     dtw_distances_ori.append(distance)
+    # dtw_distances_ori = np.array(dtw_distances_ori)  # [B]
+
     report = {
         "Goal_MSE": float(goal_sq.mean()),
         "Imitation_MSE": float(imit_sq.mean()),
@@ -554,6 +568,8 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
         "Goal_MSE_Std": float(goal_sq.std()),
         "Imitation_MSE_Std": float(imit_sq.mean(axis=1).std()),
         "Imitation_MSE_ArcLength_Std": float(arc_sq.mean(axis=1).std()),
+        "Positional DTW_Distance": float(dtw_distances_pos.mean()),
+        # "Orientation DTW_Distance": float(dtw_distances_ori.mean()),
     }
 
     print(f"--- Ambient Metric Report ({pred.shape[0]} paths, original units) ---")
@@ -562,6 +578,8 @@ def calculate_ambient_metrics(decoded_paths, x_ambient, xy_center, xy_scale, pos
     print(f"Imitation MSE (arc len):  {report['Imitation_MSE_ArcLength']:.6f}")
     print(f"Goal orientation angle:   {report['Goal_Ori_Angle_deg']:.3f} deg")
     print(f"Imitation orient. angle:  {report['Imitation_Ori_Angle_deg']:.3f} deg")
+    print(f"DTW Distance (positions):             {report['Positional DTW_Distance']:.6f}")
+    # print(f"DTW Distance (orientations):            {report['Orientation DTW_Distance']:.6f}")
     return report
 
 
