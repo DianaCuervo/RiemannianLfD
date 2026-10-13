@@ -293,6 +293,81 @@ def plot_trajectories_on_manifold(vae, dataloader, space_name="Latent Space", la
 
     plt.show()
 
+def plot_trajectories_on_manifold_list(vae, trajectories, space_name="Latent Space", latent_max=15):
+    """
+    Plots a list of trajectories layered directly on top of the VAE's Riemannian Manifold.
+    """
+    vae.eval()
+    print(f"Plotting {len(trajectories)} trajectories over the {space_name} manifold...")
+
+    plt.figure(figsize=(latent_max+3, latent_max+3))
+
+    # ==========================================
+    # 1. RENDER THE BACKGROUND MANIFOLD
+    # ==========================================
+    x_range = np.linspace(-latent_max, latent_max, 100)
+    y_range = np.linspace(-latent_max, latent_max, 100)
+    xx, yy = np.meshgrid(x_range, y_range)
+    grid_pts = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+
+    # Use the warning-free tensor extraction we fixed earlier
+    with torch.no_grad():
+        G = get_M(vae, grid_pts.clone())[2].clone().detach()
+        det_G = torch.det(G).cpu().numpy().reshape(xx.shape)
+
+    safe_det = np.clip(det_G, 1e-10, None)
+
+    # Plot the contour map
+    cp = plt.contourf(xx, yy, np.log10(safe_det), cmap='YlOrRd', alpha=0.4)
+    plt.colorbar(cp, label='Magnification Factor (log10 Det M)')
+
+    # ==========================================
+    # 2. OVERLAY THE TRAJECTORIES
+    # ==========================================
+    num_paths = len(trajectories)
+
+    for i, traj in enumerate(trajectories):
+        # We only want to label the very first line so the legend doesn't repeat!
+        demo_label = 'Trajectory' if i == 0 else ""
+        start_label = 'Start' if i == 0 else ""
+        goal_label = 'Goal' if i == 0 else ""
+
+        # Convert to numpy if it's a PyTorch tensor
+        if torch.is_tensor(traj):
+            z_np = traj.detach().cpu().numpy()
+        else:
+            z_np = np.asarray(traj)
+
+        # Automatically extract the start and goal points from the trajectory ends
+        p1_np = z_np[0]   # First point
+        p2_np = z_np[-1]  # Last point
+
+        # Plot the continuous path
+        #plt.plot(z_np[:, 0], z_np[:, 1], 'k--', alpha=0.6, label=demo_label)
+
+        # Plot Start (p1)
+        plt.scatter(p1_np[0], p1_np[1], c='green', s=50, zorder=5, label=start_label)
+
+        # Plot Goal (p2)
+        plt.scatter(p2_np[0], p2_np[1], c='red', marker='*', s=200, zorder=5, label=goal_label)
+
+    # ==========================================
+    # 3. FORMATTING
+    # ==========================================
+    plt.title(f"{space_name} Manifold with {num_paths} Trajectories")
+    plt.xlabel('z1')
+    plt.ylabel('z2')
+
+    # Restrict the view slightly so the plot bounds match the latent_max exactly
+    plt.xlim(-latent_max, latent_max)
+    plt.ylim(-latent_max, latent_max)
+
+    plt.legend(loc='upper right', fontsize='medium')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.axis('equal')
+
+    plt.show()
+
 ### Plot fns for vae testing
 def visualize_metric(vae, space_name, latent_frame):
     #model.eval()

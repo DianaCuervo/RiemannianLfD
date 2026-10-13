@@ -38,7 +38,7 @@ def load_lasa_demos(origin_dir, origin_file, trajectory_number):
     return demos, xy_center, xy_scale
 
 # Generate the benchmark datasets by dataset
-def generate_benchmark_original_dataset(dataset_cfg, shape_name, vae_model, device):
+def generate_benchmark_original_dataset(dataset_cfg, shape_name, beta, vae_model, device):
     """
     Acts just like build_dataset_offline, but formats the output as a single benchmark
     reference: the latent ground truth plus the raw demonstration segment behind each query.
@@ -74,7 +74,7 @@ def generate_benchmark_original_dataset(dataset_cfg, shape_name, vae_model, devi
         _, xy_center, xy_scale = load_lasa_demos(dataset_cfg['origin_dir'], origin_file,
                                                  dataset_cfg['trajectory_number'])
 
-    plot_trajectories(real_paths)
+    #plot_trajectories(real_paths)
     latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
 
     # 2. Segment and Unify latent and raw paths together, so both share the same indices
@@ -91,9 +91,9 @@ def generate_benchmark_original_dataset(dataset_cfg, shape_name, vae_model, devi
     processed_dir = dataset_cfg.get('save_dir_node_processed')
     
     # 2. Load the (Start, Goal) pairs that the model has already seen
-    print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
     if processed_dir:
-            processed_dir = processed_dir.replace('{shape}', shape_name)
+            processed_dir = processed_dir.replace('{shape}', shape_name).replace('{beta}', beta)
+            print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
             existing_starts, existing_goals = load_existing_start_goals(processed_dir)
     else:
         print("⚠️ Warning: 'save_dir_node_processed' not specified in config. Skipping duplicate check.")
@@ -220,7 +220,7 @@ def create_benchmark_segments(encoded_paths, latent_dimension=2, existing_starts
 
     return segmented_data
 
-def generate_benchmark_noisy_dataset(dataset_cfg, shape_name, vae_model, device):
+def generate_benchmark_noisy_dataset(dataset_cfg, shape_name, beta, vae_model, device):
     """
     Acts just like build_dataset_offline, but formats the output as a single benchmark
     reference: the latent ground truth plus the raw demonstration segment behind each query.
@@ -265,12 +265,13 @@ def generate_benchmark_noisy_dataset(dataset_cfg, shape_name, vae_model, device)
     for path in real_paths:
         path_array = np.asarray(path)
         # Generate noise with the exact same shape as the trajectory
-        noise = np.random.normal(loc=0.0, scale=noise_std, size=(1, path_array.shape[1]))
+        #noise = np.random.normal(loc=0.0, scale=noise_std, size=(1, path_array.shape[1])) # --> Uniform path noise
+        noise = np.random.normal(loc=0.0, scale=noise_std, size=path_array.shape) # --> Noise per point
         noisy_real_paths.append(path_array + noise)
 
     # Replace the original paths with our new noisy variants
     real_paths = noisy_real_paths
-    plot_trajectories(real_paths)
+    #plot_trajectories(real_paths)
     latent_paths = encode_demonstrations_paths(vae_model, real_paths, device)
 
     # 2. Segment and Unify latent and raw paths together, so both share the same indices
@@ -285,10 +286,11 @@ def generate_benchmark_noisy_dataset(dataset_cfg, shape_name, vae_model, device)
     ### Encoded benchmark data creation
     # 1. Locate the directory where the Neural ODE training data was saved
     processed_dir = dataset_cfg.get('save_dir_node_processed')
+
     # 2. Load the (Start, Goal) pairs that the model has already seen
-    print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
     if processed_dir:
-            processed_dir = processed_dir.replace('{shape}', shape_name)
+            processed_dir = processed_dir.replace('{shape}', shape_name).replace('{beta}', beta)
+            print(f"\n--- 1. Loading Training Data Points from {processed_dir} ---")
             existing_starts, existing_goals = load_existing_start_goals(processed_dir)
     else:
         print("⚠️ Warning: 'save_dir_node_processed' not specified in config. Skipping duplicate check.")

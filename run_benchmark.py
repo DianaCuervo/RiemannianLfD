@@ -11,7 +11,7 @@ from benchmark.eval_graph import run_graph_benchmark
 from benchmark.eval_node import run_node_benchmark
 from benchmark.eval_stochman import run_stochman_benchmark
 from node.data.dataset import prepare_loaders
-from node.utils.plots import visualize_metric, plot_trajectories_on_manifold, plot_trajectories
+from node.utils.plots import visualize_metric, plot_trajectories_on_manifold, plot_trajectories, plot_trajectories_on_manifold_list
 from vae.vae_model import load_pretrained_vae
 from vae.data.vae_dataset import load_vae_training_points
 from vae.utils.config import load_dataset_config, beta_label
@@ -128,11 +128,12 @@ def prepare_benchmark_data(dataset_cfg, args, device, vae_model):
     # 1. Generate the Data (latent ground truth + raw demonstration segments)
     print("Slicing and processing benchmark segments...")
     dataset_shape = args.shape + '-Shape' if args.shape not in ['None'] else args.shape
+    beta = resolve_beta(args)
 
     if args.benchmark_mode == 'original':
-        reference = generate_benchmark_original_dataset(dataset_cfg, dataset_shape, vae_model, device)
+        reference = generate_benchmark_original_dataset(dataset_cfg, dataset_shape, beta, vae_model, device)
     if args.benchmark_mode == 'noisy':
-        reference = generate_benchmark_noisy_dataset(dataset_cfg, dataset_shape, vae_model, device)
+        reference = generate_benchmark_noisy_dataset(dataset_cfg, dataset_shape, beta, vae_model, device)
     ground_truth = reference['latent']
 
     #2. Save it
@@ -143,7 +144,9 @@ def prepare_benchmark_data(dataset_cfg, args, device, vae_model):
     print("✅ Benchmark dataset generated and secured!")
 
     # Ploting benchmark paths
-    plot_trajectories(ground_truth)
+    #plot_trajectories(ground_truth)
+    #plot_trajectories_on_manifold_list(vae_model, ground_truth, latent_max=20)
+
 
 def save_reference_results(bench, vae_model, results_dir):
     """Method-independent rows: the VAE reconstruction floor and the off-manifold reference."""
