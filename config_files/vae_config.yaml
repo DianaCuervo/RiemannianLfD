@@ -36,7 +36,7 @@ lasa:
 #    cluster_path: './datasets/Clusters/clusters_{shape}.p'
     model_path: './models/vae/lasa/VAE_{shape}_beta_scale_{beta}.pt'
     # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
-    cluster_path: './datasets/Clusters/clusters_{shape}_beta_scale_{beta}.p'
+    cluster_path: './datasets/Clusters/lasa/clusters_{shape}_beta_scale_{beta}.p'
   visualization:
     latent_frame: 15
 
@@ -48,12 +48,12 @@ lerobot:
       qua_dof: 4                # 4 for the lasa VAE
       sigma: 2e-8               # VAE's decoder scale for position data
       sigma_z: 1.0              # VAE's encoder scale
-      beta_scale: 1.0
+      beta_scale: '{beta}'
     training_artifacts:
       batch_size: 128
-      model_path: './models/vae/lerobot/VAE_{task}.pt'
+      model_path: './models/vae/lerobot/VAE_{task}_beta_scale_{beta}.pt'
       # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
-      cluster_path: './datasets/Clusters/clusters_{task}.p'
+      cluster_path: './datasets/Clusters/lerobot/clusters_{task}_beta_scale_{beta}.p'
     visualization:
       latent_frame: 15
   place:
@@ -63,11 +63,11 @@ lerobot:
       qua_dof: 4                # 4 for the lasa VAE
       sigma: 3e-8               # VAE's decoder scale for position data
       sigma_z: 1.0              # VAE's encoder scale
-      beta_scale: 1.0
+      beta_scale: '{beta}'
     training_artifacts:
       batch_size: 128
-      model_path: './models/vae/lerobot/VAE_{task}.pt'
+      model_path: './models/vae/lerobot/VAE_{task}_beta_scale_{beta}.pt'
       # cluster_path: './GeodesicMotionSkills/Clusters/clusters.p'
-      cluster_path: './datasets/Clusters/clusters_{task}.p'
+      cluster_path: './datasets/Clusters/lerobot/clusters_{task}_beta_scale_{beta}.p'
     visualization:
       latent_frame: 15
