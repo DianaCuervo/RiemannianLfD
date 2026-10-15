@@ -1,0 +1,20 @@
+{
+    "framework": "NODE",
+    "variant": "energy_imitation",
+    "device": "cpu",
+    "warmup_queries": 10,
+    "per_query": {
+        "n": 700,
+        "median_s": 0.03288673950009979,
+        "q25_s": 0.032772139746157336,
+        "q75_s": 0.03308673675019236,
+        "iqr_s": 0.0003145970040350221,
+        "mean_s": 0.03296822595422522,
+        "total_s": 23.077758167957654
+    },
+    "batched_throughput": {
+        "num_queries": 700,
+        "total_s": 0.36263992299791425,
+        "per_query_equivalent_s": 0.0005180570328541632
+    }
+}

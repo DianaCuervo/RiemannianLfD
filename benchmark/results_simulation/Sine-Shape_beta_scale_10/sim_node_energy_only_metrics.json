@@ -1,0 +1,271 @@
+{
+    "framework": "node",
+    "dataset": "lasa",
+    "shape": "Sine",
+    "beta_scale": "10",
+    "node_variant": "energy_only",
+    "num_waypoints": 5,
+    "time_steps": 500,
+    "seed": 4,
+    "rbf_beta": 1.5359455347061157,
+    "vae_checkpoint": "./models/vae/lasa/VAE_Sine-Shape_beta_scale_10.pt",
+    "node_checkpoint": "./models/node/lasa/NODE_lasa_Sine-Shape_beta_scale_10_RiemannianMSE_EGI_energy_only.pth",
+    "framework_config": {},
+    "graph_grid": null,
+    "simulation": {
+        "mujoco_version": "3.11.0",
+        "mujoco": {
+            "xml_path": "./Simulation/franka_emika_panda/panda_ee_site.xml",
+            "ee_site": "ee_site",
+            "joints": [
+                "joint1",
+                "joint2",
+                "joint3",
+                "joint4",
+                "joint5",
+                "joint6",
+                "joint7"
+            ],
+            "timestep": 0.001,
+            "gravity_compensation": true,
+            "waypoint_substeps": 20,
+            "settle_steps": 1000,
+            "approach_steps": 1500,
+            "approach_ik_max_iter": 500,
+            "workspace_target": [
+                0.5,
+                0.0,
+                0.35
+            ],
+            "pos_xy_scale": 0.006
+        },
+        "ik": {
+            "max_iter": 50,
+            "step": 0.4,
+            "lam": 0.0001,
+            "tol_pos": 0.0005,
+            "tol_ori": 0.017,
+            "posture_gain": 0.1,
+            "reseed_on_collision": true,
+            "reseed_max_iter": 200,
+            "reseed_tol_pos": 0.002
+        }
+    },
+    "approach": {
+        "pos_err_mm": 0.3483671270501611,
+        "ori_err_deg": 0.12125077506259116,
+        "ik_residual_pos_mm": 0.34848302967203737,
+        "ik_residual_ori_deg": 0.12116218862119481,
+        "ik_in_collision": false,
+        "self_collision_steps": 0
+    },
+    "setup_time_seconds": 0.026195123999968928,
+    "warmup_queries": 1,
+    "total_planning_time_seconds": 1.063844078998045,
+    "segments": [
+        {
+            "segment": 0,
+            "planning_time_seconds": 0.24708575699969515,
+            "exec_pos_err_mm": {
+                "mean": 1.6553521357717953,
+                "max": 23.371445063237026,
+                "rms": 4.264980932881879
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.2975746873700911,
+                "max": 4.348223847252855,
+                "rms": 0.8016928487949683
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.3934908784098121,
+                "max": 0.4999747605585079,
+                "rms": 0.4012362861124032
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.0662932025788232,
+                "max": 0.12114629852823827,
+                "rms": 0.06816686358179934
+            },
+            "end_err_mm": 0.3037478751908847,
+            "goal_err_mm": 6.774592430397081,
+            "start_gap_latent": 0.0,
+            "end_gap_latent": 0.09861484915018082,
+            "end_gap_mm": 0.37514749335855496,
+            "latent_curve_energy": 473.3410339355469,
+            "straight_line_energy": 113.65477752685547,
+            "max_dev_from_line_latent": 18.075210571289062,
+            "planned_path_length_m": 0.13043551244939539,
+            "planned_mean_jerk": 9.291224355685966e-06,
+            "planned_speed_m_s": {
+                "median": 6.027662217284215e-05,
+                "max": 0.2958081727236188
+            },
+            "executed_path_length_m": 0.12932925424592698,
+            "executed_mean_jerk": 5.770693703954047e-06,
+            "max_quat_step_deg": 1.0445411205291748,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 1.5147579949319945,
+            "replay_time_seconds": 0.33944926499953
+        },
+        {
+            "segment": 1,
+            "planning_time_seconds": 0.2771726699993451,
+            "exec_pos_err_mm": {
+                "mean": 2.037692780100838,
+                "max": 12.347325250221635,
+                "rms": 4.028376760602398
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.3786726347361757,
+                "max": 2.2649914909146163,
+                "rms": 0.7608878376719059
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.3820789467590047,
+                "max": 0.4991573358226779,
+                "rms": 0.38552554287848234
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.061184889386468023,
+                "max": 0.09659208808275752,
+                "rms": 0.062183562435902846
+            },
+            "end_err_mm": 0.36046205953630833,
+            "goal_err_mm": 6.320397325481996,
+            "start_gap_latent": 0.09861484915018082,
+            "end_gap_latent": 0.09286580979824066,
+            "end_gap_mm": 0.19876674674076725,
+            "latent_curve_energy": 56.68074035644531,
+            "straight_line_energy": 10.294265747070312,
+            "max_dev_from_line_latent": 18.048702239990234,
+            "planned_path_length_m": 0.16395893123470906,
+            "planned_mean_jerk": 4.852187745094847e-06,
+            "planned_speed_m_s": {
+                "median": 9.534450882358765e-05,
+                "max": 0.11910716630189909
+            },
+            "executed_path_length_m": 0.1635853132941718,
+            "executed_mean_jerk": 3.3755871038663896e-06,
+            "max_quat_step_deg": 0.4528387486934662,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.581836376708405,
+            "replay_time_seconds": 0.363100225999915
+        },
+        {
+            "segment": 2,
+            "planning_time_seconds": 0.26818622199971287,
+            "exec_pos_err_mm": {
+                "mean": 2.1040635550883957,
+                "max": 9.150123989224557,
+                "rms": 3.377665682954009
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.41096928569525104,
+                "max": 1.7737242808856266,
+                "rms": 0.6335138497466097
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.43587132493036596,
+                "max": 0.49980846272314106,
+                "rms": 0.4401009423835318
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.09713899085169504,
+                "max": 0.13451876586289047,
+                "rms": 0.10118773923082269
+            },
+            "end_err_mm": 0.4813460579399119,
+            "goal_err_mm": 5.657432722523178,
+            "start_gap_latent": 0.09286580979824066,
+            "end_gap_latent": 0.03459075465798378,
+            "end_gap_mm": 0.1970782354189237,
+            "latent_curve_energy": 38.49831771850586,
+            "straight_line_energy": 4395917824.0,
+            "max_dev_from_line_latent": 11.694958686828613,
+            "planned_path_length_m": 0.16785843251467744,
+            "planned_mean_jerk": 1.8918108376368412e-06,
+            "planned_speed_m_s": {
+                "median": 0.0010387391439173638,
+                "max": 0.09169493572968905
+            },
+            "executed_path_length_m": 0.1672334553089222,
+            "executed_mean_jerk": 4.54539277329913e-06,
+            "max_quat_step_deg": 0.34942591190338135,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.40480448262587987,
+            "replay_time_seconds": 0.34597696699984226
+        },
+        {
+            "segment": 3,
+            "planning_time_seconds": 0.2713994299992919,
+            "exec_pos_err_mm": {
+                "mean": 1.2398125101687554,
+                "max": 4.1199924489637585,
+                "rms": 1.7178659808790862
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.25131033891141263,
+                "max": 0.9008931186182786,
+                "rms": 0.33509599252313854
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.35979824418310324,
+                "max": 0.4999828924036057,
+                "rms": 0.3650691450263802
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.08112992651576206,
+                "max": 0.13201872648054133,
+                "rms": 0.0831160176348165
+            },
+            "end_err_mm": 0.3000073692049634,
+            "goal_err_mm": 3.090631624762117,
+            "start_gap_latent": 0.03459075465798378,
+            "end_gap_latent": 0.028759587556123734,
+            "end_gap_mm": 0.029137381950815465,
+            "latent_curve_energy": 32.36658477783203,
+            "straight_line_energy": 92.20704650878906,
+            "max_dev_from_line_latent": 7.262031078338623,
+            "planned_path_length_m": 0.08875511401120126,
+            "planned_mean_jerk": 7.72553863465494e-07,
+            "planned_speed_m_s": {
+                "median": 0.0006031689991191142,
+                "max": 0.038964584919191865
+            },
+            "executed_path_length_m": 0.08775948398854208,
+            "executed_mean_jerk": 3.6802517417316958e-06,
+            "max_quat_step_deg": 0.16785873472690582,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.22011363742211415,
+            "replay_time_seconds": 0.32719630300016433
+        }
+    ]
+}

@@ -1,0 +1,293 @@
+{
+    "framework": "graph",
+    "dataset": "lasa",
+    "shape": "N",
+    "beta_scale": "5",
+    "node_variant": null,
+    "num_waypoints": 5,
+    "time_steps": 500,
+    "seed": 4,
+    "rbf_beta": 0.6351821422576904,
+    "vae_checkpoint": "./models/vae/lasa/VAE_N-Shape_beta_scale_5.pt",
+    "node_checkpoint": null,
+    "framework_config": {
+        "grid": "data",
+        "cell_size": 0.3,
+        "latent_margin": 1.0,
+        "lasa": {
+            "latent_frame": 15
+        }
+    },
+    "graph_grid": {
+        "grid": "data",
+        "cell_size": 0.3,
+        "nodes": [
+            117,
+            101
+        ],
+        "lower": [
+            -14.944239616394043,
+            -14.35112190246582
+        ],
+        "upper": [
+            19.855762481689453,
+            15.648880004882812
+        ]
+    },
+    "simulation": {
+        "mujoco_version": "3.11.0",
+        "mujoco": {
+            "xml_path": "./Simulation/franka_emika_panda/panda_ee_site.xml",
+            "ee_site": "ee_site",
+            "joints": [
+                "joint1",
+                "joint2",
+                "joint3",
+                "joint4",
+                "joint5",
+                "joint6",
+                "joint7"
+            ],
+            "timestep": 0.001,
+            "gravity_compensation": true,
+            "waypoint_substeps": 20,
+            "settle_steps": 1000,
+            "approach_steps": 1500,
+            "approach_ik_max_iter": 500,
+            "workspace_target": [
+                0.5,
+                0.0,
+                0.35
+            ],
+            "pos_xy_scale": 0.006
+        },
+        "ik": {
+            "max_iter": 50,
+            "step": 0.4,
+            "lam": 0.0001,
+            "tol_pos": 0.0005,
+            "tol_ori": 0.017,
+            "posture_gain": 0.1,
+            "reseed_on_collision": true,
+            "reseed_max_iter": 200,
+            "reseed_tol_pos": 0.002
+        }
+    },
+    "approach": {
+        "pos_err_mm": 0.38025467954189623,
+        "ori_err_deg": 0.08604571634561149,
+        "ik_residual_pos_mm": 0.38034501654593306,
+        "ik_residual_ori_deg": 0.08598926411732476,
+        "ik_in_collision": false,
+        "self_collision_steps": 0
+    },
+    "setup_time_seconds": 67.24559215600038,
+    "warmup_queries": 1,
+    "total_planning_time_seconds": 0.09961608400044497,
+    "segments": [
+        {
+            "segment": 0,
+            "planning_time_seconds": 0.027419779000410927,
+            "exec_pos_err_mm": {
+                "mean": 2.8054964404998834,
+                "max": 4.352178068646535,
+                "rms": 3.1278434956976757
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.5186459324472755,
+                "max": 0.7915117907326094,
+                "rms": 0.5793861131748426
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.3836894822121593,
+                "max": 0.49983748631531716,
+                "rms": 0.38681519517596746
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.06740901125960226,
+                "max": 0.09487028364857059,
+                "rms": 0.06820699143125908
+            },
+            "end_err_mm": 0.3896499001804666,
+            "goal_err_mm": 4.780364960724938,
+            "start_gap_latent": 0.0,
+            "end_gap_latent": 0.00012063131725881249,
+            "end_gap_mm": 0.0009976512581760647,
+            "latent_curve_energy": 6.929965972900391,
+            "straight_line_energy": 9.589780807495117,
+            "max_dev_from_line_latent": 4.346261501312256,
+            "planned_path_length_m": 0.2456076517403064,
+            "planned_mean_jerk": 5.271693179956899e-07,
+            "planned_speed_m_s": {
+                "median": 0.031014724223730153,
+                "max": 0.03944531386083508
+            },
+            "executed_path_length_m": 0.241800274123661,
+            "executed_mean_jerk": 4.5618616357603e-06,
+            "max_quat_step_deg": 0.1426524966955185,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.27839940623339576,
+            "replay_time_seconds": 0.4029548490007073
+        },
+        {
+            "segment": 1,
+            "planning_time_seconds": 0.023351935999926354,
+            "exec_pos_err_mm": {
+                "mean": 2.3313253402937058,
+                "max": 3.0228598388902403,
+                "rms": 2.402185755084444
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.4342079510958007,
+                "max": 0.5500034962626665,
+                "rms": 0.44603264451927627
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.3921740336625146,
+                "max": 0.4999443596320301,
+                "rms": 0.39764506138636213
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.06643316099971011,
+                "max": 0.09194845977739234,
+                "rms": 0.06796729303029377
+            },
+            "end_err_mm": 0.36126763843897325,
+            "goal_err_mm": 0.8650030941539234,
+            "start_gap_latent": 0.00012063131725881249,
+            "end_gap_latent": 0.000156402587890625,
+            "end_gap_mm": 0.0013060925308241251,
+            "latent_curve_energy": 2.993462085723877,
+            "straight_line_energy": 87.20858001708984,
+            "max_dev_from_line_latent": 6.42197847366333,
+            "planned_path_length_m": 0.1954287863997522,
+            "planned_mean_jerk": 5.676203305730765e-07,
+            "planned_speed_m_s": {
+                "median": 0.021430410080144804,
+                "max": 0.028461688440819182
+            },
+            "executed_path_length_m": 0.19302156827866934,
+            "executed_mean_jerk": 8.185505919038063e-06,
+            "max_quat_step_deg": 0.10467830300331116,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.161978012799773,
+            "replay_time_seconds": 0.37417577899941534
+        },
+        {
+            "segment": 2,
+            "planning_time_seconds": 0.02511981400039076,
+            "exec_pos_err_mm": {
+                "mean": 2.2254714324732676,
+                "max": 2.9776820987676085,
+                "rms": 2.2388023789569407
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.3849455539729982,
+                "max": 0.5467374105763595,
+                "rms": 0.3883182400960477
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.43580754503550473,
+                "max": 0.5170096679617145,
+                "rms": 0.4393869332453896
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.037489408034869214,
+                "max": 0.08563388499666146,
+                "rms": 0.04497791842100161
+            },
+            "end_err_mm": 0.40234823557840205,
+            "goal_err_mm": 3.842302012402869,
+            "start_gap_latent": 0.000156402587890625,
+            "end_gap_latent": 3.104938514297828e-05,
+            "end_gap_mm": 0.00013845747808600685,
+            "latent_curve_energy": 1.8945430517196655,
+            "straight_line_energy": 115.1675796508789,
+            "max_dev_from_line_latent": 6.58895206451416,
+            "planned_path_length_m": 0.1866942647145467,
+            "planned_mean_jerk": 3.2371625113160663e-07,
+            "planned_speed_m_s": {
+                "median": 0.01845263350295121,
+                "max": 0.028104990944964794
+            },
+            "executed_path_length_m": 0.18337792347326387,
+            "executed_mean_jerk": 5.46676848466502e-06,
+            "max_quat_step_deg": 0.09691328555345535,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.26218108109885446,
+            "replay_time_seconds": 0.619283488000292
+        },
+        {
+            "segment": 3,
+            "planning_time_seconds": 0.02372455499971693,
+            "exec_pos_err_mm": {
+                "mean": 2.4458434704735956,
+                "max": 2.7292767265620075,
+                "rms": 2.4584261802803438
+            },
+            "exec_ori_err_deg": {
+                "mean": 0.4541607144498224,
+                "max": 0.5043618767335711,
+                "rms": 0.45652405076799263
+            },
+            "ik_residual_pos_mm": {
+                "mean": 0.4014538897740783,
+                "max": 0.499815308294122,
+                "rms": 0.40669891502256583
+            },
+            "ik_residual_ori_deg": {
+                "mean": 0.06790413810734379,
+                "max": 0.1025322349796283,
+                "rms": 0.0695450131633429
+            },
+            "end_err_mm": 0.3589419261885864,
+            "goal_err_mm": 3.3556413619971965,
+            "start_gap_latent": 3.104938514297828e-05,
+            "end_gap_latent": 2.313028926437255e-05,
+            "end_gap_mm": 9.748492976426405e-05,
+            "latent_curve_energy": 2.6082072257995605,
+            "straight_line_energy": 2.4394140243530273,
+            "max_dev_from_line_latent": 1.700338363647461,
+            "planned_path_length_m": 0.2069502082776698,
+            "planned_mean_jerk": 2.8176832894014615e-07,
+            "planned_speed_m_s": {
+                "median": 0.02118762728301644,
+                "max": 0.023148179420811692
+            },
+            "executed_path_length_m": 0.2054891104352276,
+            "executed_mean_jerk": 1.1826157635630733e-05,
+            "max_quat_step_deg": 0.08846931159496307,
+            "self_collision_steps": 0,
+            "self_contact_pairs": [],
+            "ik_collision_points": {
+                "count": 0,
+                "first_index": null
+            },
+            "ik_retries": 0,
+            "ik_unresolved": 0,
+            "max_cmd_jump_deg": 0.21858088161818237,
+            "replay_time_seconds": 0.36610148399995524
+        }
+    ]
+}

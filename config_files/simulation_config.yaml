@@ -1,8 +1,12 @@
 # config_files/simulation_config.yaml
 # Settings for simulation_benchmark.py -- replaying planned latent geodesics on a
-# simulated Franka Panda. Values ported from the hardcoded constants in
-# GeodesicMotionSkills' toy_example.py.
+# simulated Franka Panda. MuJoCo/IK values ported from the hardcoded constants in
+# GeodesicMotionSkills' toy_example.py, then tuned so the arm actually tracks the path.
+#
+# The VAE and NODE are NOT configured here: they are resolved from vae_config.yaml and
+# node_config.yaml (the configs they were trained with) via --shape/--beta_scale/--node_variant.
 
+# Results go to <results_base_dir>/<shape>-Shape_beta_scale_<beta>/sim_<framework>[_<variant>]_metrics.json
 results_base_dir: './benchmark/results_simulation'
 
 mujoco:
@@ -10,9 +14,11 @@ mujoco:
   ee_site: 'ee_site'
   joints: ['joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7']
   timestep: 0.001
-  waypoint_substeps: 4          # physics steps used to ease into each IK-solved target
-  settle_steps: 300             # extra steps holding the last command, so the measured
-                                # end pose reflects the trajectory, not actuator lag
+  gravity_compensation: true    # without it the position actuators sag ~0.0085 rad (mm at the EE)
+  waypoint_substeps: 20         # physics steps per waypoint (4 left the arm 14-48 mm behind the path)
+  settle_steps: 1000            # steps holding the last command; the actuators need ~1000 to converge
+  approach_steps: 1500          # smooth move from home to the first waypoint before segment 0
+  approach_ik_max_iter: 500     # home is ~0.3 m from the first waypoint: give IK room to get there
   # Placing the de-normalized LASA trace (~47 x 47 units) in front of the robot. At
   # toy_example.py's 0.01 the shape spans 0.48 m and its far corner sits 0.92 m from the
   # base -- past the Panda's ~0.855 m reach. 0.006 gives a 0.29 x 0.28 m workspace with a
@@ -27,39 +33,34 @@ ik:
   lam: 1.0e-4
   tol_pos: 5.0e-4
   tol_ori: 1.7e-2
+  posture_gain: 0.1             # null-space pull towards the home posture; 0 disables it
+  reseed_on_collision: true     # retry IK from other seeds when a solution self-collides or misses
+  reseed_max_iter: 200
+  reseed_tol_pos: 2.0e-3        # a solution further than this from the target also triggers a retry
 
 frameworks:
   graph:
-    graph_size: 100             # nodes per latent axis
+    grid: data                  # 'data': bounding box of the encoded training points + waypoints
+                                # 'fixed': [-latent_frame, +latent_frame] on both axes
+    cell_size: 0.30             # latent units per grid step (the old 100-node +/-15 grid had 0.303)
+    latent_margin: 1.0          # added on every side of the data bounding box
     lasa:
-      latent_frame: 15          # grid spans [-latent_frame, +latent_frame]
-  # Energy minimisation over a CubicSpline, as benchmark/eval_stochman.py does via
-  # Manifold.connecting_geodesic. lr/thresh are taken from RiemannianLfD-benchmark's
-  # stochman/geodesic.py (the local stochman copy hardcodes lr=1e-1, thresh=1e-4), so the
-  # loop is re-implemented in simulation_benchmark.py rather than calling the local one.
+      latent_frame: 15          # only used with grid: fixed
+  # Energy minimisation over a CubicSpline. The settings below actually converge; with
+  # lr 1e-3 / 150 iterations (the values hardcoded in stochman/geodesic.py, used by
+  # benchmark/eval_stochman.py) the curve stays within ~0.07 latent units of a straight line.
+  # For parity with the main benchmark set: lr: 1.0e-3, max_iter: 150, stop: grad
   stochman:
     num_nodes: 5                # CubicSpline default, as used by eval_stochman.py
-    lr: 1.0e-3
-    thresh: 1.0e-3              # converged once max |grad| of the spline params drops below
-    max_iter: 150
     eval_grid: 20               # points along the curve where energy is evaluated
-  node:
-    lasa:
-      model_dir: './models/node/lasa'
-      model_name: 'NODE_lasa_{shape}-Shape_RiemannianMSE_EGI.pth'
-      # Architecture per shape, matching RiemannianLfD-benchmark's benchmark_config.yaml.
-      N:
-        latent_dim: 2
-        hidden_dim: 512
-      Angle:
-        latent_dim: 2
-        hidden_dim: 256
-      P:
-        latent_dim: 2
-        hidden_dim: 512
-      Leaf_1:
-        latent_dim: 2
-        hidden_dim: 512
+    lr: 1.0e-1
+    max_iter: 2000
+    stop: plateau               # 'plateau': energy improves by less than rtol for `patience` steps
+                                # 'grad': max |grad| of the spline params drops below thresh
+    rtol: 1.0e-4
+    patience: 20
+    thresh: 1.0e-3              # used by stop: grad; final_max_grad is reported either way
+  node: {}                      # architecture, checkpoint name and run_suffix come from node_config.yaml
 
 datasets:
   lasa:

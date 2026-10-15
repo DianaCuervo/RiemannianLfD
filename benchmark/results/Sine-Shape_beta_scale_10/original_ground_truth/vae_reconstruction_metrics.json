@@ -9,6 +9,8 @@
         "Imitation_Ori_Angle_deg": 1.3498440987145734,
         "Goal_MSE_Std": 0.8157984786826346,
         "Imitation_MSE_Std": 0.4635555588235726,
-        "Imitation_MSE_ArcLength_Std": 0.6847649862409713
+        "Imitation_MSE_ArcLength_Std": 0.6847649862409713,
+        "Positional DTW_Distance": 7.721297156514342,
+        "Orientation DTW_Distance": 1.1062518878837018
     }
 }

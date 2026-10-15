@@ -1,0 +1,51 @@
+{
+    "framework": "NODE",
+    "variant": "energy_only",
+    "model_name": "NODE_lasa_Leaf_1-Shape_beta_scale_10_RiemannianMSE_EGI_energy_only",
+    "dataset": "lasa",
+    "shape": "Leaf_1",
+    "beta_scale": "10",
+    "latent_dim": 2,
+    "hidden_dim": 256,
+    "num_queries_answered": 700,
+    "latent_metrics": {
+        "MSE_Error": 68.88688303571429,
+        "Radial_Error": 3.982811689376831,
+        "Max_Radial": 20.32689666748047,
+        "MSE_Mean": 68.88688303571429,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 3.982811689376831,
+        "Radial_Std": 5.434414863586426
+    },
+    "ambient_metrics": {
+        "Goal_MSE": 162.7919746893325,
+        "Imitation_MSE": 392.55688599259315,
+        "Imitation_MSE_ArcLength": 268.83009627736146,
+        "Goal_Ori_Angle_deg": 8.841510711224661,
+        "Imitation_Ori_Angle_deg": 17.671203807381964,
+        "Goal_MSE_Std": 303.0344923928009,
+        "Imitation_MSE_Std": 384.6377968615875,
+        "Imitation_MSE_ArcLength_Std": 329.94766078034826,
+        "Positional DTW_Distance": 123.55835525606852,
+        "Orientation DTW_Distance": 13.447778997588019
+    },
+    "off_manifold": {
+        "samples_per_path": 200,
+        "num_paths": 700,
+        "alpha_0.25": {
+            "tau": 0.5424221429473706,
+            "paths_pct": 14.571428298950195,
+            "points_pct": 3.601428508758545
+        },
+        "alpha_0.5": {
+            "tau": 4.780587480803086,
+            "paths_pct": 0.2857142686843872,
+            "points_pct": 0.03142857179045677
+        },
+        "alpha_0.75": {
+            "tau": 9.0187528186588,
+            "paths_pct": 0.1428571343421936,
+            "points_pct": 0.019999999552965164
+        }
+    }
+}

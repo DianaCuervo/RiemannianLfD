@@ -1,0 +1,51 @@
+{
+    "framework": "NODE",
+    "variant": "energy_only",
+    "model_name": "NODE_lasa_Angle-Shape_beta_scale_5_RiemannianMSE_EGI_energy_only",
+    "dataset": "lasa",
+    "shape": "Angle",
+    "beta_scale": "5",
+    "latent_dim": 2,
+    "hidden_dim": 512,
+    "num_queries_answered": 700,
+    "latent_metrics": {
+        "MSE_Error": 10.862933314732143,
+        "Radial_Error": 0.11829300224781036,
+        "Max_Radial": 1.694462537765503,
+        "MSE_Mean": 10.862933314732143,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 0.11829300224781036,
+        "Radial_Std": 0.1761670708656311
+    },
+    "ambient_metrics": {
+        "Goal_MSE": 0.6930070491972612,
+        "Imitation_MSE": 47.75865958305019,
+        "Imitation_MSE_ArcLength": 5.011687583398106,
+        "Goal_Ori_Angle_deg": 0.8086939993020974,
+        "Imitation_Ori_Angle_deg": 6.660853317735897,
+        "Goal_MSE_Std": 0.5979448237782468,
+        "Imitation_MSE_Std": 35.12852081189247,
+        "Imitation_MSE_ArcLength_Std": 6.884747940225411,
+        "Positional DTW_Distance": 17.05331454830479,
+        "Orientation DTW_Distance": 2.013536688614997
+    },
+    "off_manifold": {
+        "samples_per_path": 200,
+        "num_paths": 700,
+        "alpha_0.25": {
+            "tau": 0.3088496171585078,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.5": {
+            "tau": 5.031401589183144,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.75": {
+            "tau": 9.75395356120778,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        }
+    }
+}

@@ -1,8 +1,8 @@
 """MuJoCo replay helpers for simulation_benchmark.py.
 
 Ports the Panda IK/replay code from GeodesicMotionSkills' toy_example.py and adds the
-small runtime adapter that lets our plain-nn.Module VAE drive DiscretizedManifold and
-stochman's energy minimisation.
+small runtime adapter that lets our VAE drive DiscretizedManifold and stochman's energy
+minimisation.
 """
 import types
 from pathlib import Path
@@ -20,13 +20,12 @@ from benchmark.data_utils import load_lasa_demos  # noqa: F401 (re-exported for 
 # VAE ADAPTER
 # ==========================================
 def as_embedded_manifold(vae):
-    """Attach the Manifold attributes the planners expect, without touching vae_model.py.
+    """Make sure the VAE carries the Manifold attributes the planners expect.
 
-    vae_model.py's VAE subclasses plain nn.Module, so it has embed() but none of the
-    Manifold interface built on top of it (RiemannianLfD-benchmark's copy instead inherits
-    EmbeddedManifold). Rather than change that class, we bind what the graph and stochman
-    planners actually read onto the instance -- the same trick load_pretrained_vae already
-    uses when it sets vae.obstacle_input_space from outside.
+    vae_model.py's VAE now inherits EmbeddedManifold and sets env/time_step itself, so this
+    normally changes nothing. It stays as a guard for VAE classes that subclass plain
+    nn.Module (vae/evaluation/vae_test_with_graph.py imports it too): we bind what the graph
+    and stochman planners actually read onto the instance, without touching the class.
 
         curve_length  weights every edge of the graph (discretized_manifold.py:77-98).
                       EmbeddedManifold's implementation only calls self.embed().
@@ -100,7 +99,14 @@ def build_mujoco_model(cfg):
     assets_dir = (xml_path.parent / "assets").resolve()
     xml_text = xml_text.replace('meshdir="assets"', f'meshdir="{assets_dir.as_posix()}"')
 
-    mj_model = mujoco.MjModel.from_xml_string(xml_text)
+    # The Panda's position actuators have no gravity term, so without compensation the arm
+    # sags ~0.0085 rad below every command. gravcomp must be set before compiling: writing
+    # mj_model.body_gravcomp afterwards has no effect, because ngravcomp is fixed at compile.
+    spec = mujoco.MjSpec.from_string(xml_text)
+    if cfg.get("gravity_compensation", False):
+        for body in spec.bodies:
+            body.gravcomp = 1.0
+    mj_model = spec.compile()
     mj_data = mujoco.MjData(mj_model)
     mj_model.opt.timestep = cfg["timestep"]
 
@@ -119,12 +125,48 @@ def build_mujoco_model(cfg):
     return mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids
 
 
+def joint_actuators(mj_model, jnt_ids):
+    """The actuator driving each joint, in joint order (rather than assuming ctrl[:7])."""
+    act_ids = []
+    for jid in jnt_ids:
+        matches = [a for a in range(mj_model.nu)
+                   if mj_model.actuator_trntype[a] == mujoco.mjtTrn.mjTRN_JOINT
+                   and mj_model.actuator_trnid[a, 0] == jid]
+        if not matches:
+            raise RuntimeError(f"No actuator drives joint {mj_model.joint(jid).name}")
+        act_ids.append(matches[0])
+    return np.array(act_ids)
+
+
 def reset_to_home(mj_model, mj_data):
     if mj_model.nkey > 0:
         mujoco.mj_resetDataKeyframe(mj_model, mj_data, 0)
     else:
         mujoco.mj_resetData(mj_model, mj_data)
     mujoco.mj_forward(mj_model, mj_data)
+
+
+def self_contact_count(mj_model, mj_data):
+    """Contacts between two robot bodies (the world body, id 0, is excluded).
+
+    Valid after mj_forward / mj_step, which run collision detection.
+    """
+    ncon = mj_data.ncon
+    if ncon == 0:
+        return 0
+    b1 = mj_model.geom_bodyid[mj_data.contact.geom1[:ncon]]
+    b2 = mj_model.geom_bodyid[mj_data.contact.geom2[:ncon]]
+    return int(np.count_nonzero((b1 != 0) & (b2 != 0)))
+
+
+def self_contact_pairs(mj_model, mj_data):
+    """Names of the robot body pairs currently in contact, for warnings."""
+    pairs = set()
+    for c in mj_data.contact[:mj_data.ncon]:
+        b1, b2 = mj_model.geom_bodyid[c.geom1], mj_model.geom_bodyid[c.geom2]
+        if b1 != 0 and b2 != 0:
+            pairs.add(tuple(sorted((mj_model.body(b1).name, mj_model.body(b2).name))))
+    return pairs
 
 
 # ==========================================
@@ -136,128 +178,237 @@ def _clamp_joints(mj_model, mj_data, qpos_ids, jnt_ids):
         mj_data.qpos[qpos_ids[i]] = np.clip(mj_data.qpos[qpos_ids[i]], lo, hi)
 
 
-def solve_ik_position(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids, target_pos, ik):
-    """Position-only IK via damped least squares."""
-    nv = mj_model.nv
+def quat_to_mat(quat):
+    mat = np.zeros(9)
+    mujoco.mju_quat2Mat(mat, quat)
+    return mat.reshape(3, 3)
+
+
+def _orientation_error(target_mat, cur_mat):
+    """Rotation vector taking cur_mat to target_mat (world frame), and its angle in rad."""
+    R_err = target_mat @ cur_mat.T
+    angle = float(np.arccos(np.clip((np.trace(R_err) - 1) / 2, -1.0, 1.0)))
+    if angle < 1e-9:
+        return np.zeros(3), angle
+    return angle / (2 * np.sin(angle)) * np.array([
+        R_err[2, 1] - R_err[1, 2],
+        R_err[0, 2] - R_err[2, 0],
+        R_err[1, 0] - R_err[0, 1],
+    ]), angle
+
+
+def solve_ik_full(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids, target_pos, target_quat, ik,
+                  q_posture=None):
+    """6-DoF position + orientation IK via damped least squares.
+
+    With q_posture and ik['posture_gain'] > 0, a null-space term pulls the joints towards
+    q_posture through the arm's redundant DoF only, so the end-effector target is unaffected.
+    Without it the local solver drifts into wrist poses that self-collide (N-Shape: the hand
+    hits link5). Returns the final position error (m) and orientation error (rad).
+    """
+    gain = ik.get("posture_gain", 0.0) if q_posture is not None else 0.0
+    target_mat = quat_to_mat(target_quat)
+    n = len(dof_ids)
     for _ in range(ik["max_iter"]):
         mujoco.mj_forward(mj_model, mj_data)
         dp = target_pos - mj_data.site_xpos[site_id]
-        if np.linalg.norm(dp) < ik["tol_pos"]:
-            break
-        jacp = np.zeros((3, nv))
-        mujoco.mj_jacSite(mj_model, mj_data, jacp, None, site_id)
-        J = jacp[:, dof_ids]
-        dq = J.T @ np.linalg.solve(J @ J.T + ik["lam"] * np.eye(3), dp)
-        mj_data.qpos[qpos_ids] += ik["step"] * dq
-        _clamp_joints(mj_model, mj_data, qpos_ids, jnt_ids)
-    mujoco.mj_forward(mj_model, mj_data)
-    return np.linalg.norm(target_pos - mj_data.site_xpos[site_id])
-
-
-def solve_ik_full(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids, target_pos, target_quat, ik):
-    """6-DoF position + orientation IK via damped least squares."""
-    nv = mj_model.nv
-    ep, eo = 1.0, 1.0
-    for _ in range(ik["max_iter"]):
-        mujoco.mj_forward(mj_model, mj_data)
-        cur_pos = mj_data.site_xpos[site_id].copy()
-        cur_mat = mj_data.site_xmat[site_id].reshape(3, 3).copy()
-
-        dp = target_pos - cur_pos
-        ep = np.linalg.norm(dp)
-
-        tm = np.zeros(9)
-        mujoco.mju_quat2Mat(tm, target_quat)
-        R_err = tm.reshape(3, 3) @ cur_mat.T
-        angle = float(np.arccos(np.clip((np.trace(R_err) - 1) / 2, -1.0, 1.0)))
-        eo = abs(angle)
-        if eo < 1e-9:
-            do = np.zeros(3)
-        else:
-            s = np.sin(angle)
-            do = angle / (2 * s) * np.array([
-                R_err[2, 1] - R_err[1, 2],
-                R_err[0, 2] - R_err[2, 0],
-                R_err[1, 0] - R_err[0, 1],
-            ])
-
-        if ep < ik["tol_pos"] and eo < ik["tol_ori"]:
+        do, eo = _orientation_error(target_mat, mj_data.site_xmat[site_id].reshape(3, 3))
+        if np.linalg.norm(dp) < ik["tol_pos"] and eo < ik["tol_ori"]:
             break
 
-        err6 = np.concatenate([dp, do])
-        jacp = np.zeros((3, nv))
-        jacr = np.zeros((3, nv))
+        jacp = np.zeros((3, mj_model.nv))
+        jacr = np.zeros((3, mj_model.nv))
         mujoco.mj_jacSite(mj_model, mj_data, jacp, jacr, site_id)
         J = np.vstack([jacp, jacr])[:, dof_ids]
-        dq = J.T @ np.linalg.solve(J @ J.T + ik["lam"] * np.eye(6), err6)
+        J_pinv = J.T @ np.linalg.inv(J @ J.T + ik["lam"] * np.eye(6))
+        dq = J_pinv @ np.concatenate([dp, do])
+        if gain:
+            dq += (np.eye(n) - J_pinv @ J) @ (gain * (q_posture - mj_data.qpos[qpos_ids]))
         mj_data.qpos[qpos_ids] += ik["step"] * dq
         _clamp_joints(mj_model, mj_data, qpos_ids, jnt_ids)
 
     mujoco.mj_forward(mj_model, mj_data)
     ep = np.linalg.norm(target_pos - mj_data.site_xpos[site_id])
+    _, eo = _orientation_error(target_mat, mj_data.site_xmat[site_id].reshape(3, 3))
     return ep, eo
 
 
 # ==========================================
 # TRAJECTORY EXECUTION
 # ==========================================
-def execute_trajectory_in_mujoco(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids,
-                                 traj_pos, traj_quat, ik, substeps, viewer=None,
-                                 settle_steps=0):
-    """Drive the arm along a trajectory already expressed in workspace coordinates.
+class PandaReplay:
+    """Drive the simulated Panda through world-frame pose trajectories.
 
-    Unlike toy_example.py's version this applies no scaling or offset of its own -- callers
-    hand it world-frame targets via to_workspace() -- and it does not mutate its inputs.
+    IK runs on its own MjData (`ref`), a kinematic reference warm-started from the previous
+    solution; the physical arm (`data`) only receives joint commands, interpolated from the
+    previous command to the new one. toy_example.py instead solved IK from the lagging
+    physical pose and restarted every command from it, so actuator lag fed back into the
+    commands and the arm never caught up.
+
+    Every reference IK solution is checked for self-collision. If it collides or misses
+    `reseed_tol_pos`, IK is retried from other seeds and the collision-free solution closest
+    to the previous command is kept (ik.reseed_on_collision).
     """
-    traj_pos = np.atleast_2d(np.asarray(traj_pos, dtype=np.float64).squeeze())
-    if traj_quat is not None:
+
+    SYNC_EVERY = 20  # physics steps between viewer syncs (50 Hz of simulated time at 1 ms)
+
+    def __init__(self, mj_cfg, ik_cfg, seed=0):
+        (self.model, self.data, self.site_id, self.qpos_ids,
+         self.dof_ids, self.jnt_ids) = build_mujoco_model(mj_cfg)
+        self.act_ids = joint_actuators(self.model, self.jnt_ids)
+        reset_to_home(self.model, self.data)
+
+        self.ref = mujoco.MjData(self.model)
+        self.ref.qpos[:] = self.data.qpos
+        mujoco.mj_forward(self.model, self.ref)
+
+        self.q_home = self.data.qpos[self.qpos_ids].copy()
+        self.cmd = self.q_home.copy()  # last joint command sent to the actuators
+        self.lo, self.hi = self.model.jnt_range[self.jnt_ids].T
+
+        self.ik = ik_cfg
+        self.substeps = mj_cfg["waypoint_substeps"]
+        self.settle_steps = mj_cfg.get("settle_steps", 0)
+        self.approach_steps = mj_cfg.get("approach_steps", 0)
+        self.approach_ik_max_iter = mj_cfg.get("approach_ik_max_iter", ik_cfg["max_iter"])
+        self.rng = np.random.default_rng(seed)
+        self.viewer = None
+        self._steps = 0
+
+    # ---- low level ----
+    def _step(self, n):
+        """Advance physics n steps; returns how many of them had a robot self-contact."""
+        hits = 0
+        for _ in range(n):
+            mujoco.mj_step(self.model, self.data)
+            hits += self_contact_count(self.model, self.data) > 0
+            self._steps += 1
+            if self.viewer is not None and self._steps % self.SYNC_EVERY == 0:
+                self.viewer.sync()
+        return int(hits)
+
+    def _ik(self, target_pos, target_quat, max_iter):
+        ik = dict(self.ik, max_iter=max_iter)
+        return solve_ik_full(self.model, self.ref, self.site_id, self.qpos_ids, self.dof_ids,
+                             self.jnt_ids, target_pos, target_quat, ik, q_posture=self.q_home)
+
+    def _solve(self, target_pos, target_quat, max_iter=None):
+        """Reference IK for one pose. Returns (ep, eo, retried, in_collision)."""
+        q_prev = self.ref.qpos[self.qpos_ids].copy()
+        ep, eo = self._ik(target_pos, target_quat, max_iter or self.ik["max_iter"])
+        in_collision = self_contact_count(self.model, self.ref) > 0
+        tol = self.ik.get("reseed_tol_pos", np.inf)
+        if not self.ik.get("reseed_on_collision", False) or (not in_collision and ep < tol):
+            return ep, eo, False, in_collision
+
+        q_first = self.ref.qpos[self.qpos_ids].copy()
+        seeds = [self.q_home, 0.5 * (self.q_home + q_prev), q_prev + self.rng.normal(0.0, 0.3, len(q_prev))]
+        best = None
+        for seed in seeds:
+            self.ref.qpos[self.qpos_ids] = np.clip(seed, self.lo, self.hi)
+            e = self._ik(target_pos, target_quat, self.ik["reseed_max_iter"])
+            if self_contact_count(self.model, self.ref) == 0 and e[0] < tol:
+                dist = np.linalg.norm(self.ref.qpos[self.qpos_ids] - q_prev)
+                if best is None or dist < best[0]:
+                    best = (dist, self.ref.qpos[self.qpos_ids].copy(), e)
+
+        self.ref.qpos[self.qpos_ids] = q_first if best is None else best[1]
+        mujoco.mj_forward(self.model, self.ref)
+        if best is None:
+            return ep, eo, True, in_collision
+        return best[2][0], best[2][1], True, False
+
+    def _pose_error(self, target_pos, target_quat):
+        ep = np.linalg.norm(self.data.site_xpos[self.site_id] - target_pos)
+        _, eo = _orientation_error(quat_to_mat(target_quat), self.data.site_xmat[self.site_id].reshape(3, 3))
+        return ep, eo
+
+    # ---- public ----
+    def approach(self, target_pos, target_quat):
+        """Move from the current pose to the first pose of the replay, then settle.
+
+        Without this, segment 0 started from the home pose ~0.29 m away and spent its first
+        part catching up. Not part of any segment's metrics.
+        """
+        ep_ik, eo_ik, _, in_collision = self._solve(target_pos, target_quat, self.approach_ik_max_iter)
+        start, goal = self.cmd.copy(), self.ref.qpos[self.qpos_ids].copy()
+        collisions = 0
+        for k in range(1, self.approach_steps + 1):
+            a = k / self.approach_steps
+            a = a * a * (3 - 2 * a)  # smoothstep: zero joint velocity at both ends
+            self.data.ctrl[self.act_ids] = (1 - a) * start + a * goal
+            collisions += self._step(1)
+        collisions += self._step(self.settle_steps)
+        self.cmd = goal
+
+        ep, eo = self._pose_error(target_pos, target_quat)
+        print(f"  Approach: pos_err={ep * 1000:.2f}mm ori_err={np.degrees(eo):.2f}deg")
+        return {"pos_err_mm": float(ep * 1000), "ori_err_deg": float(np.degrees(eo)),
+                "ik_residual_pos_mm": float(ep_ik * 1000), "ik_residual_ori_deg": float(np.degrees(eo_ik)),
+                "ik_in_collision": bool(in_collision), "self_collision_steps": collisions}
+
+    def execute(self, traj_pos, traj_quat):
+        """Replay one trajectory already expressed in workspace coordinates.
+
+        The command for each waypoint is ramped over `waypoint_substeps` physics steps, then
+        the arm's actual pose is recorded against that waypoint. After the last waypoint the
+        command is held for `settle_steps`. Inputs are not mutated.
+        """
+        traj_pos = np.atleast_2d(np.asarray(traj_pos, dtype=np.float64).squeeze())
         traj_quat = np.atleast_2d(np.asarray(traj_quat, dtype=np.float64).squeeze())
+        n = traj_pos.shape[0]
 
-    ik_errors = []
-    for i in range(traj_pos.shape[0]):
-        qpos_start = mj_data.qpos[qpos_ids].copy()  # where the arm actually is right now
+        ik_residual = np.zeros((n, 2))
+        exec_err = np.zeros((n, 2))
+        achieved = np.zeros((n, 3))
+        ik_collision_points, contact_pairs = [], set()
+        retries = unresolved = collisions = 0
+        max_jump = 0.0
+        tol = self.ik.get("reseed_tol_pos", np.inf)
 
-        if traj_quat is not None:
-            ep, eo = solve_ik_full(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids,
-                                   traj_pos[i], traj_quat[i], ik)
-        else:
-            ep = solve_ik_position(mj_model, mj_data, site_id, qpos_ids, dof_ids, jnt_ids,
-                                   traj_pos[i], ik)
-            eo = 0.0
-        ik_errors.append((ep, eo))
+        for i in range(n):
+            ep, eo, retried, in_collision = self._solve(traj_pos[i], traj_quat[i])
+            ik_residual[i] = ep, eo
+            retries += retried
+            unresolved += retried and (in_collision or ep >= tol)
+            if in_collision:
+                ik_collision_points.append(i)
 
-        qpos_target = mj_data.qpos[qpos_ids].copy()  # where the IK solver converged to
+            q_target = self.ref.qpos[self.qpos_ids].copy()
+            max_jump = max(max_jump, float(np.abs(q_target - self.cmd).max()))
+            for sub in range(1, self.substeps + 1):
+                a = sub / self.substeps
+                self.data.ctrl[self.act_ids] = (1 - a) * self.cmd + a * q_target
+                hit = self._step(1)
+                if hit and len(contact_pairs) < 10:
+                    contact_pairs |= self_contact_pairs(self.model, self.data)
+                collisions += hit
+            self.cmd = q_target
 
-        # restore the real current pose before physically stepping toward the target
-        mj_data.qpos[qpos_ids] = qpos_start
-        mujoco.mj_forward(mj_model, mj_data)
+            achieved[i] = self.data.site_xpos[self.site_id]
+            exec_err[i] = self._pose_error(traj_pos[i], traj_quat[i])
 
-        for sub in range(1, substeps + 1):
-            alpha = sub / substeps
-            mj_data.ctrl[:7] = (1 - alpha) * qpos_start + alpha * qpos_target
-            mujoco.mj_step(mj_model, mj_data)
-            if viewer is not None:
-                viewer.sync()
+        # The actuators lag their setpoint; hold the last command so the end pose measures
+        # where the trajectory ended rather than the lag.
+        collisions += self._step(self.settle_steps)
+        end_pos = self.data.site_xpos[self.site_id].copy()
 
-    # The position actuators lag their setpoint, so after the last waypoint the arm is
-    # still short of it. Hold the final command for a while to let it converge, otherwise
-    # `achieved_pos` measures controller lag rather than where the trajectory ended.
-    for _ in range(settle_steps):
-        mujoco.mj_step(mj_model, mj_data)
-        if viewer is not None:
-            viewer.sync()
-
-    achieved_pos = mj_data.site_xpos[site_id].copy()
-    achieved_mat = mj_data.site_xmat[site_id].reshape(3, 3).copy()
-    achieved_quat = np.zeros(4)
-    mujoco.mju_mat2Quat(achieved_quat, achieved_mat.flatten())
-
-    ep_mm = np.array([e[0] for e in ik_errors]) * 1000
-    eo_deg = np.degrees([e[1] for e in ik_errors])
-    print(f"  MuJoCo replay: pos_err mean={ep_mm.mean():.2f}mm max={ep_mm.max():.2f}mm  "
-          f"ori_err mean={eo_deg.mean():.1f}deg max={eo_deg.max():.1f}deg")
-
-    return ik_errors, achieved_pos, achieved_quat
+        print(f"  MuJoCo replay: executed pos_err mean={exec_err[:, 0].mean() * 1000:.2f}mm "
+              f"max={exec_err[:, 0].max() * 1000:.2f}mm  ori_err mean={np.degrees(exec_err[:, 1]).mean():.2f}deg "
+              f"max={np.degrees(exec_err[:, 1]).max():.2f}deg  (IK residual max "
+              f"{ik_residual[:, 0].max() * 1000:.2f}mm)")
+        return {
+            "ik_residual": ik_residual,          # [n, (m, rad)] reference IK solution vs target
+            "exec_err": exec_err,                # [n, (m, rad)] actual pose after each waypoint
+            "achieved_path": achieved,           # [n, 3] actual site positions
+            "end_pos": end_pos,                  # after settling
+            "self_collision_steps": collisions,
+            "self_contact_pairs": sorted(contact_pairs),
+            "ik_collision_points": ik_collision_points,
+            "ik_retries": int(retries),
+            "ik_unresolved": int(unresolved),
+            "max_cmd_jump_rad": max_jump,
+        }
 
 
 # ==========================================

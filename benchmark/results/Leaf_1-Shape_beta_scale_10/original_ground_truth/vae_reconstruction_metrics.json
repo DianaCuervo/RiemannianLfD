@@ -1,0 +1,16 @@
+{
+    "shape": "Leaf_1",
+    "beta_scale": "10",
+    "ambient_metrics": {
+        "Goal_MSE": 0.7424457502628155,
+        "Imitation_MSE": 0.772398938311378,
+        "Imitation_MSE_ArcLength": 0.8944902918746603,
+        "Goal_Ori_Angle_deg": 0.7700999794962031,
+        "Imitation_Ori_Angle_deg": 0.8250042323683808,
+        "Goal_MSE_Std": 0.8125491253863865,
+        "Imitation_MSE_Std": 0.5919524277244569,
+        "Imitation_MSE_ArcLength_Std": 0.7314462660232204,
+        "Positional DTW_Distance": 7.317385186811506,
+        "Orientation DTW_Distance": 0.701110456146833
+    }
+}

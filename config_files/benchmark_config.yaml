@@ -47,7 +47,7 @@ datasets:
 frameworks:
   graph:
     axis_points: 100
-    graph_size: 100
+    graph_size: 50
     toy:
       latent_frame: 10
     lasa:

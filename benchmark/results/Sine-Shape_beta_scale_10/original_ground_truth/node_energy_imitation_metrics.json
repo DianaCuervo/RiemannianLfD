@@ -25,7 +25,9 @@
         "Imitation_Ori_Angle_deg": 13.011721064436609,
         "Goal_MSE_Std": 627.7662757145703,
         "Imitation_MSE_Std": 235.61275787022643,
-        "Imitation_MSE_ArcLength_Std": 164.7634747502966
+        "Imitation_MSE_ArcLength_Std": 164.7634747502966,
+        "Positional DTW_Distance": 126.65069059122662,
+        "Orientation DTW_Distance": 11.231158556598436
     },
     "off_manifold": {
         "samples_per_path": 200,

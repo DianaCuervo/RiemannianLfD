@@ -1,0 +1,16 @@
+{
+    "framework": "Graph",
+    "variant": "default",
+    "device": "cpu",
+    "warmup_queries": 10,
+    "per_query": {
+        "n": 700,
+        "median_s": 0.04435986550015514,
+        "q25_s": 0.040890923997721984,
+        "q75_s": 0.04996109349940525,
+        "iqr_s": 0.009070169501683267,
+        "mean_s": 0.05443762322141993,
+        "total_s": 38.10633625499395
+    },
+    "graph_construction_s": 12.64941484999872
+}
