@@ -2,7 +2,7 @@
 toy:
   default_shape:  # Toy might not have 'shapes', so we use a default key
   # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
-  run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+  run_suffix: 'imitation_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
   # Model Architecture Parameters
   architecture:
     latent_dim: 2
@@ -39,7 +39,7 @@ toy:
     lr_gamma: 0.1
     lr_drop_fraction: 0.75
     batch_size: 32
-    epochs: 10 #4000
+    epochs: 4000
     metric_scale_energy: 'metric_scale_energy_dummy'    # Energy loss scaling factor
     safe_baseline: 'safe_baseline_dummy'                # Average Energy from demonstrations
     metric_clamp_max: 1e6         # Centralized metric ceiling
