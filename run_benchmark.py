@@ -5,6 +5,7 @@ import torch
 import copy
 
 from benchmark.data_utils import generate_benchmark_original_dataset, generate_benchmark_noisy_dataset, save_test_config, load_benchmark_reference, save_json
+from benchmark.eval_reactivity import run_reactivity_benchmark
 from benchmark.metrics import decode_latente_paths, calculate_ambient_metrics
 from benchmark.off_manifold import get_off_manifold_reference, reference_summary, off_manifold_rates
 from benchmark.eval_graph import run_graph_benchmark
@@ -191,6 +192,10 @@ def main():
                              "default: original")
     parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cpu', 'cuda'],
                         help="Device for inference and timing")
+    parser.add_argument('--suite', type=str, default='standard', choices=['standard', 'reactivity', 'query_noise'],
+                        help="standard: open-loop path benchmark; reactivity: closed-loop runs with mid-run pushes, "
+                             "goal switches and disturbances; query_noise: closed-loop runs from noisy start/goal points "
+                             "(settings in the 'reactivity' block of benchmark_config.yaml)")
     args = parser.parse_args()
 
     # 2. Load Configuration and Setup Device
@@ -250,6 +255,17 @@ def main():
 
     # 6. Route to the correct evaluation script
     frameworks_to_run = ['node', 'stochman', 'graph'] if args.framework == 'all' else [args.framework]
+
+    if args.suite != 'standard':
+        # Closed-loop suites: the NODE control loop and all perturbation/metric computations run on CPU
+        vae_cpu = load_respective_vae(args, 'cpu')
+        node_variants = args.node_variants or [bench['node_cfg'].get('run_suffix')]
+        run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model, vae_cpu,
+                                 frameworks_to_run, node_variants, suite=args.suite)
+        print("\n" + "=" * 50)
+        print(f"✅ {args.suite} suite completed!")
+        print("=" * 50)
+        return
 
     for fw in frameworks_to_run:
         print(f"\n--- Starting Benchmark for: {fw.upper()} ---")
