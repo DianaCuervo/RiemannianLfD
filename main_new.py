@@ -92,6 +92,7 @@ def main_original():
     if args.dataset == 'toy':
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{type}', dataset_type)
         full_name = f"{dataset_type}_"
         model_name = model_name_template.replace('{type}', full_name)
 
@@ -133,7 +134,7 @@ def main_original():
     vae = load_pretrained_vae(vae_cfg, load_vae_training_points(node_cfg['dataset']))
     print(f"VAE Model initialized with DOF={total_dof}")
 
-    ### Visualization of Manifold
+    # ## Visualization of Manifold
     # # Extract latent_frame from the config
     # space_title = ''
     # if args.dataset == 'toy':
@@ -506,5 +507,6 @@ def main_iterative_vae():
 
 if __name__ == "__main__":
     print("Hello world!")
-    main_iterative_vae()
+    #main_iterative_vae()
+    main_original()
     print("Bye bye!")
