@@ -46,11 +46,8 @@ class GraphPlanner(nn.Module):
 
 #Building the graph planner (counterpart of load_trained_node)
 def build_graph_planner(vae_model, latent_frame=15, graph_size=100):
-    # DiscretizedManifold stores the decoded grid in a hard-coded [N, 3] buffer
-    # (discretized_manifold.py:64), so it only accepts 3-D positions (lasa, lerobot)
-    if vae_model.pos_dof != 3:
-        raise ValueError(f"The graph planner needs a VAE with 3-D positions, got pos_dof={vae_model.pos_dof} "
-                         f"(the toy VAE is R2 x S2)")
+    # DiscretizedManifold sizes its decoded-grid buffer by model.pos_dof (discretized_manifold.py:69),
+    # so any position dimension works (toy R2 x S2, lasa/lerobot R3 x S3)
     # DiscretizedManifold builds CPU tensors and calls .numpy() on intermediates
     vae_model = as_embedded_manifold(vae_model.cpu())
 

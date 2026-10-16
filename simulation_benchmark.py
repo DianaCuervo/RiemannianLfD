@@ -151,7 +151,7 @@ def build_discrete_manifold(vae_model, fw_cfg, dataset_type):
     graph_size = fw_cfg['graph_size']
     latent_max = fw_cfg[dataset_type]['latent_frame']
 
-    ran = torch.linspace(-latent_max, latent_max, graph_size)
+    ran = torch.linspace(-latent_max, latent_max, graph_size, device=next(vae_model.parameters()).device)
     x, y = torch.meshgrid(ran, ran)
     grid = torch.cat((x.unsqueeze(0), y.unsqueeze(0)))
 
@@ -191,7 +191,7 @@ def plan_stochman(vae_model, p0, p1, time_steps, fw_cfg):
     of hardcoded, so the local stochman package stays untouched. The spline's begin/end
     are buffers, so only the interior nodes move and the end-points stay exact.
     """
-    curve = CubicSpline(p0.unsqueeze(0), p1.unsqueeze(0), num_nodes=fw_cfg['num_nodes'])
+    curve = CubicSpline(p0.unsqueeze(0), p1.unsqueeze(0), num_nodes=fw_cfg['num_nodes']).to(p0.device)
     alpha = torch.linspace(0, 1, fw_cfg['eval_grid'], dtype=curve.begin.dtype,
                            device=curve.device)
     opt = torch.optim.Adam(curve.parameters(), lr=fw_cfg['lr'])

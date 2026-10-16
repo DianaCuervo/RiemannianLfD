@@ -21,9 +21,10 @@ datasets:
     max_window: 490
     samples_per_path: 500
     time_steps: 100
-    # Benchmark-specific save paths
-    benchmark_dir: './benchmark/data/toy'
-    gt_data: './benchmark/data/toy/ground_truth.pt'
+    # Benchmark-specific save paths (dynamically replaces {beta}): the latent
+    # ground truth is encoded with one VAE, so every beta_scale gets its own file
+    benchmark_dir: './benchmark/data/toy_beta_scale_{beta}'
+    gt_data: './benchmark/data/toy_beta_scale_{beta}/ground_truth.pt'
 
   lasa:
     type: 'lasa'
@@ -32,13 +33,16 @@ datasets:
     origin_file: '{shape}_UQ.mat'
     trajectory_number: 7
     # Preprocessing params for benchmark generation
-    min_window: 200
+    min_window: 100
     max_window: 980
-    samples_per_path: 10
+    samples_per_path: 50
     time_steps: 100
-    # Benchmark-specific save paths (dynamically replaces {shape})
-    benchmark_dir: './benchmark/data/lasa_{shape}'
-    gt_data: './benchmark/data/lasa_{shape}/ground_truth_140.pt'
+    noise_std: 0.001
+    # Benchmark-specific save paths (dynamically replaces {shape} and {beta}): the latent
+    # ground truth is encoded with one VAE, so every beta_scale gets its own file
+    benchmark_dir: './benchmark/data/lasa_{shape}_beta_scale_{beta}'
+    gt_data: './benchmark/data/lasa_{shape}_beta_scale_{beta}/ground_truth_{bm_mode}.pt'
+    save_dir_node_processed: './node/data/{shape}_beta_scale_{beta}_processed'
 
 frameworks:
   graph:
@@ -66,16 +70,19 @@ frameworks:
       latent_frame: 15
       model_dir: './models/node/lasa'
       model_name: 'NODE_{shape}RiemannianMSE_EGI'
+      # latent_dim/hidden_dim must match node_config.yaml (the architecture the NODE was trained with)
       N:
         latent_dim: 2
         hidden_dim: 256
       Angle:
         latent_dim: 2
-        hidden_dim: 256
+        hidden_dim: 512
       P:
         latent_dim: 2
         hidden_dim: 512
       Leaf_1:
         latent_dim: 2
+        hidden_dim: 256
+      Sine:
+        latent_dim: 2
         hidden_dim: 512
-

@@ -1,0 +1,47 @@
+{
+    "framework": "Stochman",
+    "variant": "default",
+    "dataset": "lasa",
+    "shape": "N",
+    "beta_scale": "1",
+    "num_queries_answered": 140,
+    "latent_metrics": {
+        "MSE_Error": 47.052080357142856,
+        "Radial_Error": 3.045825280878489e-08,
+        "Max_Radial": 1.3328003944934608e-07,
+        "MSE_Mean": 47.052080357142856,
+        "MSE_Std": 0.0,
+        "Radial_Mean": 3.045825280878489e-08,
+        "Radial_Std": 4.979447965069994e-08
+    },
+    "ambient_metrics": {
+        "Goal_MSE": 0.5461268715506884,
+        "Imitation_MSE": 309.90897020797746,
+        "Imitation_MSE_ArcLength": 262.64336696505984,
+        "Goal_Ori_Angle_deg": 1.066801401228421,
+        "Imitation_Ori_Angle_deg": 15.699245349111909,
+        "Goal_MSE_Std": 0.5654311364296684,
+        "Imitation_MSE_Std": 211.95230635794528,
+        "Imitation_MSE_ArcLength_Std": 184.18032291645653
+    },
+    "off_manifold": {
+        "samples_per_path": 200,
+        "num_paths": 140,
+        "alpha_0.25": {
+            "tau": -0.20651138164526017,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.5": {
+            "tau": 4.727682921568223,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        },
+        "alpha_0.75": {
+            "tau": 9.661877224781705,
+            "paths_pct": 0.0,
+            "points_pct": 0.0
+        }
+    },
+    "one_off_costs": {}
+}

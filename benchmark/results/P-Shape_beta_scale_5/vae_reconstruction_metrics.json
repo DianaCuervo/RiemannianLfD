@@ -1,0 +1,14 @@
+{
+    "shape": "P",
+    "beta_scale": "5",
+    "ambient_metrics": {
+        "Goal_MSE": 1.4054089372121394,
+        "Imitation_MSE": 0.9907397711813858,
+        "Imitation_MSE_ArcLength": 0.9030345032641047,
+        "Goal_Ori_Angle_deg": 17.40332270629231,
+        "Imitation_Ori_Angle_deg": 17.377185345314448,
+        "Goal_MSE_Std": 1.2755949553174046,
+        "Imitation_MSE_Std": 0.6112584397222098,
+        "Imitation_MSE_ArcLength_Std": 0.6063411762685778
+    }
+}

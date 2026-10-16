@@ -1,0 +1,16 @@
+{
+    "framework": "Graph",
+    "variant": "default",
+    "device": "cuda",
+    "warmup_queries": 10,
+    "per_query": {
+        "n": 140,
+        "median_s": 0.18321981399822107,
+        "q25_s": 0.17010226775164483,
+        "q75_s": 0.20059905600101047,
+        "iqr_s": 0.030496788249365636,
+        "mean_s": 0.20390896273560688,
+        "total_s": 28.547254782984965
+    },
+    "graph_construction_s": 105.70123551299912
+}

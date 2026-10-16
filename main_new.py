@@ -12,6 +12,7 @@ from node.data.preprocessing import build_dataset_offline
 from node.data.dataset import prepare_loaders
 from vae.vae_model import load_pretrained_vae
 from vae.data.vae_dataset import load_vae_training_points
+from vae.utils.config import beta_label
 from node.utils.plots import visualize_metric, plot_latent_dataloader, plot_trajectories_on_manifold, \
     plot_save_training_results
 from node.training.node_training_new import train_node_energy_goal_imitation_riemannianmse
@@ -367,7 +368,7 @@ def main_iterative_vae():
     vae = load_pretrained_vae(vae_cfg, load_vae_training_points(node_cfg['dataset']))
     print(f"VAE Model initialized with DOF={total_dof}")
 
-    # ## Visualization of Manifold
+    ### Visualization of Manifold
     # # Extract latent_frame from the config
     # space_title = ''
     # if args.dataset == 'toy':

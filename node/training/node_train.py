@@ -275,7 +275,8 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
         os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, f"{model_name}.pth")
-    torch.save(model.state_dict(), save_path)
+    # torch.save(model.state_dict(), save_path)
+    torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, save_path)
     print(f"✅ Model saved dynamically to {save_path}")
 
     return model, history
@@ -506,7 +507,7 @@ def train_node_energy_goal_imitation_riemannianmse_optuna(model, vae, train_load
         os.makedirs(save_dir)
 
     save_path = os.path.join(save_dir, f"{model_name}.pth")
-    torch.save(model.state_dict(), save_path)
+    torch.save({k: v.detach().cpu() for k, v in model.state_dict().items()}, save_path)
     print(f"✅ Model saved dynamically to {save_path}")
 
     return model, history
