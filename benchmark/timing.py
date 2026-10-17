@@ -27,12 +27,17 @@ class QueryTimer:
         return False
 
 
+# Control periods for the deadline-miss rate (1 kHz and 100 Hz control)
+DEADLINES_S = (1e-3, 1e-2)
+
+
 def summarize(times):
-    """Median and interquartile range (plus mean) of per-query times in seconds."""
+    """Median and interquartile range (headline), plus mean, p95, max and deadline-miss rates,
+    of per-query times in seconds."""
     times = np.asarray(times, dtype=np.float64)
     if times.size == 0:
         return {"n": 0}
-    q25, median, q75 = np.percentile(times, [25, 50, 75])
+    q25, median, q75, p95 = np.percentile(times, [25, 50, 75, 95])
     return {
         "n": int(times.size),
         "median_s": float(median),
@@ -40,7 +45,10 @@ def summarize(times):
         "q75_s": float(q75),
         "iqr_s": float(q75 - q25),
         "mean_s": float(times.mean()),
+        "p95_s": float(p95),
+        "max_s": float(times.max()),
         "total_s": float(times.sum()),
+        "deadline_miss_pct": {f"{d * 1e3:g}ms": float((times > d).mean() * 100) for d in DEADLINES_S},
     }
 
 

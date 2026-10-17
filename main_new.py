@@ -92,6 +92,7 @@ def main_original():
     if args.dataset == 'toy':
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{type}', dataset_type)
         full_name = f"{dataset_type}_"
         model_name = model_name_template.replace('{type}', full_name)
 
@@ -133,7 +134,7 @@ def main_original():
     vae = load_pretrained_vae(vae_cfg, load_vae_training_points(node_cfg['dataset']))
     print(f"VAE Model initialized with DOF={total_dof}")
 
-    ### Visualization of Manifold
+    # ## Visualization of Manifold
     # # Extract latent_frame from the config
     # space_title = ''
     # if args.dataset == 'toy':
@@ -276,8 +277,7 @@ def main_iterative_vae():
     parser.add_argument('--dataset', type=str, required=True, choices=['toy', 'lasa' , 'lerobot'], help="Which dataset to use")
     parser.add_argument('--shape', type=str, default='None', help="Specific shape for LASA (e.g., N, Angle)")
     parser.add_argument('--task', type=str, default='None', help="Specific task for LEROBOT (e.g., pick, place)")
-    parser.add_argument('--beta_scale', type=str, default='1',
-                        help='Specific beta scale for the lasa VAE (e.g., 1, 5, 10); the toy and lerobot ones are selected in vae_config.yaml')
+    parser.add_argument('--beta_scale', type=str, default='1', help='Specific beta scale for VAE (e.g., 1, 5, 10)')
     args = parser.parse_args()
 
     if args.dataset == 'lasa':
@@ -294,24 +294,25 @@ def main_iterative_vae():
         vae_cfg = vae_cfg[args.task]
 
     original_path = vae_cfg['training_artifacts']['model_path']
-    beta = args.beta_scale
-    if args.dataset in ('toy', 'lerobot'):
-        # The toy and lerobot beta_scale is selected in vae_config.yaml only (--beta_scale is for lasa)
-        beta = beta_label(vae_cfg['architecture']['beta_scale'])
-    beta_complement = 'beta_scale_' + beta
-    # Replace the '{shape}/{task}/{beta}' placeholder with the actual data from the command line
+    # Replace the '{type}/{shape}/{task}' placeholder with the actual data from the command line
     if args.dataset == 'toy':
-        # One VAE per beta_scale, as for lasa
+        dataset = args.dataset
+        beta = args.beta_scale
+        beta_complement = 'beta_scale_' + beta
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{beta}', str(beta))
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{beta}', str(beta))
     elif args.dataset == 'lasa':
         dataset_shape = args.shape + '-Shape'
+        beta = args.beta_scale
+        beta_complement = 'beta_scale_' + beta
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{shape}', dataset_shape).replace('{beta}', str(beta))
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{shape}', dataset_shape).replace('{beta}', str(beta))
     elif args.dataset == 'lerobot':
         dataset_task = args.task
+        beta = args.beta_scale
+        beta_complement = 'beta_scale_' + beta
         vae_cfg['architecture']['beta_scale'] = float(beta)
         vae_cfg['training_artifacts']['model_path'] = original_path.replace('{task}', dataset_task).replace('{beta}', str(beta))
         vae_cfg['training_artifacts']['cluster_path'] = vae_cfg['training_artifacts']['cluster_path'].replace('{task}', dataset_task).replace('{beta}', str(beta))
@@ -323,8 +324,9 @@ def main_iterative_vae():
     if args.dataset == 'toy':
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
-        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{beta}', str(beta))
-        full_name = f"{dataset_type}_{beta_complement}_"
+        complement = f"{dataset}_{beta_complement}"
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{type}', complement)
+        full_name = f"{complement}_"
         model_name = model_name_template.replace('{type}', full_name)
 
     if args.dataset == 'lasa':
@@ -342,8 +344,9 @@ def main_iterative_vae():
         dataset_type = node_cfg['dataset'].get('type', 'UnknownDataset')
         model_name_template = node_cfg['dataset'].get('model_name', 'NODE_{shape}RiemannianMSE_EGI')
         node_cfg['dataset']['shape_name'] = node_cfg['dataset']['shape_name'].replace('{task}', dataset_task)
-        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', dataset_task).replace('{beta}', str(beta))
-        full_name = f"{dataset_type}_{dataset_task}_{beta_complement}_"
+        complement = f"{dataset_task}_{beta_complement}"
+        node_cfg['dataset']['save_dir'] = node_cfg['dataset']['save_dir'].replace('{task}', complement)
+        full_name = f"{dataset_type}_{complement}_"
         model_name = model_name_template.replace('{task}', full_name)
 
     # Optional suffix to keep different loss setups apart (e.g. 'imitation_only'):
@@ -469,10 +472,13 @@ def main_iterative_vae():
         # 1. Figure out where the model is saved based on the config
         model_dir = node_cfg['dataset'].get('model_dir', f"./models/node/{args.dataset}")
         model_path = os.path.join(model_dir, f"{model_name}.pth")
-        results_space = f"{dataset_type} {beta_complement}"
+        results_space = f"{dataset_type}"
+        if dataset_type == "toy":
+            results_space = f"{dataset} {beta_complement}"
         if dataset_type == "lasa":
             results_space = f"{dataset_shape} {beta_complement}"
-
+        if dataset_type == "lerobot":
+            results_space = f"{dataset_task} {beta_complement}"
 
         l_max = vae_cfg['visualization']['latent_frame']
         test_results_dir = node_cfg['dataset'].get('model_test_results_dir', f"./results/node/{args.dataset}")
@@ -501,5 +507,6 @@ def main_iterative_vae():
 
 if __name__ == "__main__":
     print("Hello world!")
-    main_iterative_vae()
+    #main_iterative_vae()
+    main_original()
     print("Bye bye!")

@@ -1,6 +1,8 @@
 # config_files/node_config.yaml
 toy:
   default_shape:  # Toy might not have 'shapes', so we use a default key
+  # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+  run_suffix: 'imitation_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
   # Model Architecture Parameters
   architecture:
     latent_dim: 2
@@ -23,8 +25,7 @@ toy:
     max_window: 480
     samples_per_path: 50
     time_steps: 50
-    # save_dir: './node/data/toy_processed'
-    save_dir: './node/data/toy_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
+    save_dir: './node/data/{type}_processed'
     train_rat: 0.7715
     val_rat: 0.087
     model_dir: './models/node/toy_example'
@@ -38,16 +39,16 @@ toy:
     lr_gamma: 0.1
     lr_drop_fraction: 0.75
     batch_size: 32
-    epochs: 10 #4000
-    metric_scale_energy: 1e-8     # Energy loss scaling factor
-    safe_baseline: 3867617.82     # Average Energy from demonstrations
+    epochs: 4000
+    metric_scale_energy: 'metric_scale_energy_dummy'    # Energy loss scaling factor
+    safe_baseline: 'safe_baseline_dummy'                # Average Energy from demonstrations
     metric_clamp_max: 1e6         # Centralized metric ceiling
-    metric_clamp_min: 1e-3        # Centralized metric ceiling
+    metric_clamp_min: 1e-6        # Centralized metric ceiling
     grad_clip_norm: 0.5           # Gradient clipping threshold
     scheduler:
-      base_scale: 0.0001   # 1e-4
+      base_scale: 1.0   # 1e-4
       ramp_start: 500      # Epoch when goal/energy pressure begins
-      ramp_length: 2500    # How many epochs it takes to reach max weights
+      ramp_length: 1000    # How many epochs it takes to reach max weights
       w_imit_target: 1.0   # Constant multiplier for imitation
       w_goal_start: 1.0    # What goal weight starts at when ramp begins
       w_goal_target: 50.0  # What goal weight ramps up to
@@ -150,11 +151,11 @@ lasa:
       step_size: 0.025
     # Training Hyperparameters (for the train loop!)
     training:
-      learning_rate: 1.0e-4 #2.1e-3--> Optuna value
+      learning_rate: 3.0e-4 #2.1e-3--> Optuna value
       lr_gamma: 0.1
       lr_drop_fraction: 0.8
       batch_size: 32
-      epochs: 2000
+      epochs: 1000
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -162,12 +163,12 @@ lasa:
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 1.0         # The shrink ray
-        ramp_start: 500          # Epoch when goal/energy pressure begins
-        ramp_length: 1000         # How many epochs it takes to reach max weight
+        ramp_start: 250          # Epoch when goal/energy pressure begins
+        ramp_length: 500         # How many epochs it takes to reach max weight
         w_imit_target: 1.0      # Constant multiplier for imitation
         w_goal_start: 5.0        # What goal weight starts at when ramp begins
-        w_goal_target: 5.0      # What goal weight ramps up to
-        w_ener_target: 0.1      # What energy weight ramps up to
+        w_goal_target: 50.0      # What goal weight ramps up to
+        w_ener_target: 0.01      # What energy weight ramps up to
   Leaf_1:
     # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
@@ -242,7 +243,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
+      save_dir: './node/data/{task}_processed'
       min_window: 150
       max_window: 950
       samples_per_path: 50
@@ -271,7 +272,7 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 1000
+      epochs: 10
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -279,8 +280,8 @@ lerobot:
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 1.0   # The shrink ray
-        ramp_start: 0      # Epoch when goal/energy pressure begins
-        ramp_length: 700    # How many epochs it takes to reach max weight
+        ramp_start: 500      # Epoch when goal/energy pressure begins
+        ramp_length: 1000    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 5.0    # What goal weight starts at when ramp begins
         w_goal_target: 5.0  # What goal weight ramps up to
@@ -294,7 +295,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_beta_scale_{beta}_processed'  # one latent dataset per VAE (beta_scale)
+      save_dir: './node/data/{task}_processed'
       min_window: 150
       max_window: 950
       samples_per_path: 50
@@ -323,7 +324,7 @@ lerobot:
       lr_gamma: 0.1
       lr_drop_fraction: 0.75
       batch_size: 32
-      epochs: 1000
+      epochs: 10
       metric_scale_energy: 'metric_scale_energy_dummy'
       safe_baseline: 'safe_baseline_dummy'
       metric_clamp_max: 1e6         # Centralized metric ceiling
@@ -331,8 +332,8 @@ lerobot:
       grad_clip_norm: 0.5           # Gradient clipping threshold
       scheduler:
         base_scale: 1.0   # The shrink ray
-        ramp_start: 0      # Epoch when goal/energy pressure begins
-        ramp_length: 700    # How many epochs it takes to reach max weight
+        ramp_start: 500      # Epoch when goal/energy pressure begins
+        ramp_length: 1000    # How many epochs it takes to reach max weight
         w_imit_target: 1.0   # Constant multiplier for imitation
         w_goal_start: 5.0    # What goal weight starts at when ramp begins
         w_goal_target: 5.0  # What goal weight ramps up to

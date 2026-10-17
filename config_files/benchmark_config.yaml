@@ -86,3 +86,32 @@ frameworks:
       Sine:
         latent_dim: 2
         hidden_dim: 512
+
+# ==========================================
+# CLOSED-LOOP SUITES (run_benchmark.py --suite reactivity | query_noise)
+# ==========================================
+# Every method runs in the same simulated control loop (step 1/(T-1)): NODE takes one RK4 step of its
+# field per cycle, graph/stochman follow their plan and replan on every perturbation event.
+reactivity:
+  seed: 0
+  fraction: 0.3                 # share of the benchmark queries that get a perturbation (stratified by demo and length)
+  push_mm: [1, 2, 5, 10]        # in-plane ambient push of the state; >= 5 mm puts many states off the data (stress level)
+  at_fraction: [0.3, 0.5, 0.7]  # when the push / goal switch happens, as a fraction of the nominal T-1 steps
+  disturbance_mm: [0.2, 0.5]    # std of the in-plane ambient noise added to the state at every step
+  replan_every: 10              # planners under continuous disturbance replan every N steps
+  project_z: 0.0                # LASA demos lie in z = 0 and the encoder extrapolates for z != 0 (null: keep z)
+  tolerance:                    # goal success
+    pos_mm: 2.0
+    rot_deg: 5.0
+    latent_pct: 2.0             # also the stop criterion of a rollout (% of the latent span)
+  max_steps_factor: 3           # a rollout stops at the goal tolerance, after 3 (T-1) steps at the latest ...
+  patience: 10                  # ... or when the state has stopped moving (step < stall_pct) for 10 steps
+  stall_pct: 0.01               # % of the latent span per step
+  recover_band_pct: 1.0         # a pushed run has recovered once it is within 1 % of the latent span of the unperturbed run
+  control_periods_ms: [1, 10]   # 1 kHz and 100 Hz control: missed cycles and deadline misses
+  timing_device: 'cpu'          # NODE control cycles are timed on CPU (single queries are faster there)
+  cpu_threads: 1
+  query_noise:
+    fraction: 1.0               # all benchmark queries
+    apply_to: ['start', 'goal', 'both']
+    levels: [[0.5, 0.1], [1, 0.25], [2, 0.5], [5, 1.0]]   # [position mm, rotation deg]; last level = off-data stress test

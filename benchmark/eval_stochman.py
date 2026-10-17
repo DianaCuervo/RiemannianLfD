@@ -38,21 +38,22 @@ def stochman_benchmark(model , z1_test, z2_test, time_steps, dense_time_steps):
 
         C, success = Manifold.connecting_geodesic(model, p0_single, p1_single, init_curve=init_curve)
         # A CubicSpline object is 'callable'. Passing t_eval returns the [100, 2] path.
-        return C, C(time_steps).detach().reshape(time_steps.shape[0], -1)
+        return C, C(time_steps).detach().reshape(time_steps.shape[0], -1), bool(success)
 
     for i in range(min(WARMUP_QUERIES, p0.shape[0])):
         solve(i)
 
-    all_geodesics, all_dense, times = [], [], []
+    all_geodesics, all_dense, times, converged = [], [], [], []
     success_count = 0
 
     for i in range(p0.shape[0]):
         # Calculate one geodesic
         try:
             with QueryTimer(device) as timer:
-                C, coords = solve(i)
+                C, coords, ok = solve(i)
             #if success:
             times.append(timer.elapsed)
+            converged.append(ok)
             all_geodesics.append(coords)
             all_dense.append(C(dense_time_steps).detach().reshape(dense_time_steps.shape[0], -1))
             success_count += 1
@@ -60,8 +61,9 @@ def stochman_benchmark(model , z1_test, z2_test, time_steps, dense_time_steps):
             print(f"Failed at index {i}: {e}")
             break
 
-    print(f"Successfully calculated {success_count}/{p0.shape[0]} geodesics.")
-    return all_geodesics, all_dense, times
+    print(f"Successfully calculated {success_count}/{p0.shape[0]} geodesics; "
+          f"converged within the iteration cap: {sum(converged)}/{len(converged)}.")
+    return all_geodesics, all_dense, times, converged
 
 
 def run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_model):
@@ -88,7 +90,7 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_
     # 2. INFERENCE
     # ==========================================
     print("\nRunning Inference...")
-    trajectories, dense_trajectories, times = stochman_benchmark(vae_model, z1, z2, t_steps, t_dense)
+    trajectories, dense_trajectories, times, converged = stochman_benchmark(vae_model, z1, z2, t_steps, t_dense)
 
     stochman_predictions = torch.stack(trajectories)
     stochman_dense = torch.stack(dense_trajectories)
@@ -124,6 +126,8 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_
         "device": label,
         "warmup_queries": WARMUP_QUERIES,
         "per_query": timing,
+        # max_iter=150 in stochman.geodesic_minimizing_energy: unconverged queries make the time a lower bound
+        "converged_pct": 100.0 * sum(converged) / max(len(converged), 1),
     }
     save_json(timing_report, os.path.join(results_dir, f"stochman_timing_{label}.json"))
 
