@@ -360,6 +360,7 @@ def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
 
     print("--> 6. Success! Moving to math...")
     ep_ids = sorted(np.unique(ep_all).tolist())
+    q_ref = None #For sign reference
 
     # --- STEP 1: Load and resample every episode to a fixed n_points ---
     raw_trajectories = []
@@ -371,6 +372,16 @@ def get_demonstrations_paths_lerobot(repo_id, euler_order, n_points):
         pos = cart[mask][order, :3]
         euler = cart[mask][order, 3:6]
         quat = Rotation.from_euler(euler_order, euler).as_quat()
+
+        #Ensure that rotations are continuous to avoid quaternion flip
+        for k in range(1, len(quat)):
+            if np.dot(quat[k], quat[k - 1]) < 0:
+                quat[k] = -quat[k]
+        # ...and put every demo on the same copy as the first one
+        if q_ref is None:
+            q_ref = quat[0].copy()
+        elif np.dot(quat[0], q_ref) < 0:
+            quat = -quat
 
         # resample every episode to a fixed n_points (episode durations/frame
         # counts differ even though dt within each episode is uniform)
