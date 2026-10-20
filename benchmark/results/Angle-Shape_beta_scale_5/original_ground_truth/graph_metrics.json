@@ -4,28 +4,29 @@
     "dataset": "lasa",
     "shape": "Angle",
     "beta_scale": "5",
-    "graph_size": 50,
+    "graph_size": 60,
+    "latent_frame": 17.837389755249024,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 6.166721379743303,
-        "Radial_Error": 0.00012478404096327722,
-        "Max_Radial": 0.0005366670084185898,
-        "MSE_Mean": 6.166721379743303,
+        "MSE_Error": 6.047335553850447,
+        "Radial_Error": 0.00012050609802827239,
+        "Max_Radial": 0.0005115678068250418,
+        "MSE_Mean": 6.047335553850447,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.00012478404096327722,
-        "Radial_Std": 9.951574611477554e-05
+        "Radial_Mean": 0.00012050609802827239,
+        "Radial_Std": 9.576190495863557e-05
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.5973232267660098,
-        "Imitation_MSE": 21.623944016199427,
-        "Imitation_MSE_ArcLength": 8.012827685301051,
-        "Goal_Ori_Angle_deg": 0.7596702096264196,
-        "Imitation_Ori_Angle_deg": 4.090405248687976,
-        "Goal_MSE_Std": 0.4196760670890907,
-        "Imitation_MSE_Std": 24.225655989808327,
-        "Imitation_MSE_ArcLength_Std": 9.323657257393071,
-        "Positional DTW_Distance": 21.89835238487111,
-        "Orientation DTW_Distance": 2.3852933793903746
+        "Goal_MSE": 0.597321527974524,
+        "Imitation_MSE": 21.148972462569212,
+        "Imitation_MSE_ArcLength": 7.824875048395458,
+        "Goal_Ori_Angle_deg": 0.7596670039496362,
+        "Imitation_Ori_Angle_deg": 4.043252985209767,
+        "Goal_MSE_Std": 0.41967795349360754,
+        "Imitation_MSE_Std": 23.996744106817097,
+        "Imitation_MSE_ArcLength_Std": 9.264483944837103,
+        "Positional DTW_Distance": 21.444665438562797,
+        "Orientation DTW_Distance": 2.3440756517919765
     },
     "off_manifold": {
         "samples_per_path": 200,
@@ -47,6 +48,6 @@
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 12.886183792999873
+        "graph_construction_s": 17.027421796999988
     }
 }

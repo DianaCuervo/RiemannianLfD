@@ -6,7 +6,7 @@ from stochman.curves import CubicSpline
 from benchmark.data_utils import save_latent_paths_stochman, save_json
 from benchmark.metrics import evaluate_predictions
 from benchmark.off_manifold import DENSE_SAMPLES
-from benchmark.timing import QueryTimer, summarize, device_label, WARMUP_QUERIES
+from benchmark.timing import QueryTimer, summarize, describe, cpu_threads, timing_settings, device_label, WARMUP_QUERIES
 from node.utils.plots import visualize_gtvspred_comparison_multiple, save_test_plot
 
 
@@ -90,14 +90,16 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_
     # 2. INFERENCE
     # ==========================================
     print("\nRunning Inference...")
-    trajectories, dense_trajectories, times, converged = stochman_benchmark(vae_model, z1, z2, t_steps, t_dense)
+    # On CPU the per-query loop is pinned to the configured thread count (same as NODE)
+    with cpu_threads(timing_settings(dataset_cfg)['cpu_threads'], device) as pinned:
+        trajectories, dense_trajectories, times, converged = stochman_benchmark(vae_model, z1, z2, t_steps, t_dense)
 
     stochman_predictions = torch.stack(trajectories)
     stochman_dense = torch.stack(dense_trajectories)
     timing = summarize(times)
     print(f"Ground Shape: {ground_truth.shape}")
     print(f"Stochman predictions shape: {stochman_predictions.shape}")
-    print(f"⏱️ Per-query time: median {timing['median_s']:.4f} s (IQR {timing['iqr_s']:.4f} s)")
+    print(f"⏱️ Per-query time ({device_label(device)}, threads={pinned.threads or 'all'}): {describe(timing)}")
 
     # ==========================================
     # 3. CALCULATE METRICS
@@ -124,6 +126,7 @@ def run_stochman_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_
         "framework": "Stochman",
         "variant": "default",
         "device": label,
+        "cpu_threads": pinned.threads,
         "warmup_queries": WARMUP_QUERIES,
         "per_query": timing,
         # max_iter=150 in stochman.geodesic_minimizing_energy: unconverged queries make the time a lower bound

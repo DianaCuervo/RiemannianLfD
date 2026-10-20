@@ -47,11 +47,13 @@ datasets:
 frameworks:
   graph:
     axis_points: 100
-    graph_size: 50
+    graph_size: 100                # nodes per axis over the configured latent_frame (sets the node spacing)
     toy:
       latent_frame: 10
     lasa:
       latent_frame: 15
+      auto_frame: true            # widen the grid to frame_margin x max |z| of the encoded benchmark data, with
+      frame_margin: 1.1           #   graph_size scaled to keep the spacing (fixed [-15, 15]^2 missed 13 % of N queries)
   stochman:
     axis_points: 100
     toy:
@@ -88,6 +90,13 @@ frameworks:
         hidden_dim: 512
 
 # ==========================================
+# TIMING (standard suite, per-query times)
+# ==========================================
+timing:
+  single_path_device: 'cpu'     # NODE single paths are timed on CPU (on GPU, kernel-launch overhead dominates); null = --device
+  cpu_threads: 1                # threads for every per-query timing on CPU (graph/stochman too with --device cpu); null = all
+
+# ==========================================
 # CLOSED-LOOP SUITES (run_benchmark.py --suite reactivity | query_noise)
 # ==========================================
 # Every method runs in the same simulated control loop (step 1/(T-1)): NODE takes one RK4 step of its
@@ -96,9 +105,13 @@ reactivity:
   seed: 0
   fraction: 0.3                 # share of the benchmark queries that get a perturbation (stratified by demo and length)
   push_mm: [1, 2, 5, 10]        # in-plane ambient push of the state; >= 5 mm puts many states off the data (stress level)
-  at_fraction: [0.3, 0.5, 0.7]  # when the push / goal switch happens, as a fraction of the nominal T-1 steps
+  at_fraction: [0.3, 0.5, 0.7]  # when the push / goal switch happens, as a fraction of the start-goal distance covered
   disturbance_mm: [0.2, 0.5]    # std of the in-plane ambient noise added to the state at every step
-  replan_every: 10              # planners under continuous disturbance replan every N steps
+  replan_every: 10              # planners under continuous disturbance replan every N steps (counted from when the plan is available)
+  replan_delay: ['none', 'continue']  # 'none': a replan takes no simulated time; 'continue': it takes floor(ms / sim_period_ms)
+                                #   steps, meanwhile the robot keeps executing the old plan. Each mode is saved separately.
+  sim_period_ms: 10             # one simulated step = one 100 Hz control cycle (99 steps ~ 1 s of motion)
+  diverge_factor: 2             # a run stops as diverged once |z| > diverge_factor * max |z_train| (counts as a failure)
   project_z: 0.0                # LASA demos lie in z = 0 and the encoder extrapolates for z != 0 (null: keep z)
   tolerance:                    # goal success
     pos_mm: 2.0

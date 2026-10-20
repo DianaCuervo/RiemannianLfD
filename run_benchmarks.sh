@@ -3,10 +3,10 @@
 # Benchmark sweep over LASA shapes x VAE beta scales.
 # Stochman and Graph depend only on (shape, beta), so they run once per pair; every NODE
 # variant (run_suffix) is then evaluated against the same ground truth and off-manifold reference.
-SHAPES=("Sine" "Leaf_1")  # e.g. ("Angle" "Leaf_1" "N" "P" "Sine")
+SHAPES=("Leaf_1")  # e.g. ("Angle" "Leaf_1" "N" "P" "Sine")
 BETAS=(5 10)
 NODE_VARIANTS=("energy_imitation" "energy_only")
-DEVICE="auto"  # set to "cpu" (or "cuda") for a second pass of CPU/GPU timings
+DEVICE="cpu"  # set to "cpu" (or "cuda") for a second pass of CPU/GPU timings
 
 # Run from the repo root (configs use relative paths) with the geodesic1 env, unless PYTHON is set
 cd "$(dirname "$0")"
@@ -33,8 +33,12 @@ for shape in "${SHAPES[@]}"; do
         echo "🚀 BENCHMARK: Shape = $shape | Beta = $beta"
         echo "================================================================="
 
+        # run "STOCHMAN Shape: $shape, Beta: $beta" --framework stochman --dataset lasa --shape "$shape" --beta_scale "$beta" --suite reactivity
+        run "GRAPH    Shape: $shape, Beta: $beta" --framework graph --dataset lasa --shape "$shape" --beta_scale "$beta" --suite reactivity
+        # run "NODE     Shape: $shape, Beta: $beta" --framework node --dataset lasa --shape "$shape" --beta_scale "$beta" --suite reactivity \
+        #     --node_variants "${NODE_VARIANTS[@]}"
         # run "STOCHMAN Shape: $shape, Beta: $beta" --framework stochman --dataset lasa --shape "$shape" --beta_scale "$beta"
-        run "GRAPH    Shape: $shape, Beta: $beta" --framework graph --dataset lasa --shape "$shape" --beta_scale "$beta"
+        run "GRAPH    Shape: $shape, Beta: $beta" --framework graph --dataset lasa --shape "$shape" --beta_scale "$beta" 
         # run "NODE     Shape: $shape, Beta: $beta" --framework node --dataset lasa --shape "$shape" --beta_scale "$beta" \
         #     --node_variants "${NODE_VARIANTS[@]}"
     done

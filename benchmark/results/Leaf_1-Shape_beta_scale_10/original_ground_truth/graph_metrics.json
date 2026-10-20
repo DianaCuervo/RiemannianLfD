@@ -4,49 +4,50 @@
     "dataset": "lasa",
     "shape": "Leaf_1",
     "beta_scale": "10",
-    "graph_size": 50,
+    "graph_size": 103,
+    "latent_frame": 15.350569152832032,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 8.430394029017856,
-        "Radial_Error": 0.00027110055088996887,
-        "Max_Radial": 0.0012214240850880742,
-        "MSE_Mean": 8.430394029017856,
+        "MSE_Error": 7.049760435267857,
+        "Radial_Error": 0.00026699918089434505,
+        "Max_Radial": 0.0011038128286600113,
+        "MSE_Mean": 7.049760435267857,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.00027110055088996887,
-        "Radial_Std": 0.00024843114078976214
+        "Radial_Mean": 0.00026699918089434505,
+        "Radial_Std": 0.00024682199000380933
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.7425232574890025,
-        "Imitation_MSE": 28.125110453119543,
-        "Imitation_MSE_ArcLength": 17.667965848737886,
-        "Goal_Ori_Angle_deg": 0.7701634709273222,
-        "Imitation_Ori_Angle_deg": 4.612002310420111,
-        "Goal_MSE_Std": 0.8125975457959679,
-        "Imitation_MSE_Std": 66.50776864476683,
-        "Imitation_MSE_ArcLength_Std": 91.17475291295486,
-        "Positional DTW_Distance": 27.175033005300964,
-        "Orientation DTW_Distance": 2.5855449508911694
+        "Goal_MSE": 0.7425200274650576,
+        "Imitation_MSE": 23.123068447936866,
+        "Imitation_MSE_ArcLength": 12.721653878960732,
+        "Goal_Ori_Angle_deg": 0.7701570170157632,
+        "Imitation_Ori_Angle_deg": 4.347196459095476,
+        "Goal_MSE_Std": 0.8125951557665594,
+        "Imitation_MSE_Std": 19.580639632267058,
+        "Imitation_MSE_ArcLength_Std": 12.949924483510975,
+        "Positional DTW_Distance": 25.64800494673421,
+        "Orientation DTW_Distance": 2.464530015992119
     },
     "off_manifold": {
         "samples_per_path": 200,
         "num_paths": 700,
         "alpha_0.25": {
             "tau": 0.5424221429473706,
-            "paths_pct": 11.85714340209961,
-            "points_pct": 0.47785714268684387
+            "paths_pct": 9.14285659790039,
+            "points_pct": 0.3214285671710968
         },
         "alpha_0.5": {
             "tau": 4.780587480803086,
-            "paths_pct": 2.142857313156128,
-            "points_pct": 0.06785713881254196
+            "paths_pct": 0.7142857313156128,
+            "points_pct": 0.0071428571827709675
         },
         "alpha_0.75": {
             "tau": 9.0187528186588,
-            "paths_pct": 0.5714285373687744,
-            "points_pct": 0.03428571671247482
+            "paths_pct": 0.0,
+            "points_pct": 0.0
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 12.64941484999872
+        "graph_construction_s": 53.89472788898274
     }
 }

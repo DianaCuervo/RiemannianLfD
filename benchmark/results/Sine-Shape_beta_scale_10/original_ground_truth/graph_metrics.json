@@ -4,49 +4,50 @@
     "dataset": "lasa",
     "shape": "Sine",
     "beta_scale": "10",
-    "graph_size": 50,
+    "graph_size": 52,
+    "latent_frame": 15.448795127868653,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 5.101417829241071,
-        "Radial_Error": 0.0003101597831118852,
-        "Max_Radial": 0.0009237555204890668,
-        "MSE_Mean": 5.101417829241071,
+        "MSE_Error": 5.0702060546875,
+        "Radial_Error": 0.0003095317224506289,
+        "Max_Radial": 0.0011254326673224568,
+        "MSE_Mean": 5.0702060546875,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.0003101597831118852,
-        "Radial_Std": 0.00021752493921667337
+        "Radial_Mean": 0.0003095317224506289,
+        "Radial_Std": 0.00022273043578024954
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.5404197522582007,
-        "Imitation_MSE": 13.954329832638217,
-        "Imitation_MSE_ArcLength": 3.386850289233427,
-        "Goal_Ori_Angle_deg": 1.5663183615431493,
-        "Imitation_Ori_Angle_deg": 3.528925735725764,
-        "Goal_MSE_Std": 0.8158139514827308,
-        "Imitation_MSE_Std": 18.393519680197876,
-        "Imitation_MSE_ArcLength_Std": 3.3467294385980106,
-        "Positional DTW_Distance": 14.291848621763066,
-        "Orientation DTW_Distance": 1.8120691551582462
+        "Goal_MSE": 0.5404266599394943,
+        "Imitation_MSE": 13.863017428945481,
+        "Imitation_MSE_ArcLength": 3.3740066004196487,
+        "Goal_Ori_Angle_deg": 1.566324712702595,
+        "Imitation_Ori_Angle_deg": 3.5427463472315517,
+        "Goal_MSE_Std": 0.8158324966523542,
+        "Imitation_MSE_Std": 18.145691652338055,
+        "Imitation_MSE_ArcLength_Std": 3.065113098171431,
+        "Positional DTW_Distance": 14.437192499601048,
+        "Orientation DTW_Distance": 1.8356875235459853
     },
     "off_manifold": {
         "samples_per_path": 200,
         "num_paths": 700,
         "alpha_0.25": {
             "tau": 0.7113978066634106,
-            "paths_pct": 30.000001907348633,
-            "points_pct": 1.98285710811615
+            "paths_pct": 30.142858505249023,
+            "points_pct": 2.02571439743042
         },
         "alpha_0.5": {
             "tau": 5.247168302965263,
-            "paths_pct": 11.0,
-            "points_pct": 0.25285714864730835
+            "paths_pct": 11.285714149475098,
+            "points_pct": 0.26642856001853943
         },
         "alpha_0.75": {
             "tau": 9.782938799267114,
-            "paths_pct": 0.7142857313156128,
-            "points_pct": 0.030000001192092896
+            "paths_pct": 1.0,
+            "points_pct": 0.006428571417927742
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 12.781983425000362
+        "graph_construction_s": 13.13761027198052
     }
 }

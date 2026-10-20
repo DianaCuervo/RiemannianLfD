@@ -4,28 +4,29 @@
     "dataset": "lasa",
     "shape": "N",
     "beta_scale": "5",
-    "graph_size": 50,
+    "graph_size": 68,
+    "latent_frame": 20.3901237487793,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 4.783244140625,
-        "Radial_Error": 0.00024261708313133568,
-        "Max_Radial": 0.0009208840201608837,
-        "MSE_Mean": 4.783244140625,
+        "MSE_Error": 4.829292327008929,
+        "Radial_Error": 0.0002383422397542745,
+        "Max_Radial": 0.0009175596060231328,
+        "MSE_Mean": 4.829292327008929,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.00024261708313133568,
-        "Radial_Std": 0.0001908276608446613
+        "Radial_Mean": 0.0002383422397542745,
+        "Radial_Std": 0.00019255196093581617
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.5290948798813397,
-        "Imitation_MSE": 24.793818330169614,
-        "Imitation_MSE_ArcLength": 7.509669268504329,
-        "Goal_Ori_Angle_deg": 1.082002240569538,
-        "Imitation_Ori_Angle_deg": 4.584809360798249,
-        "Goal_MSE_Std": 0.5847538174442596,
-        "Imitation_MSE_Std": 38.46455761689689,
-        "Imitation_MSE_ArcLength_Std": 6.337109262348193,
-        "Positional DTW_Distance": 21.83205272211804,
-        "Orientation DTW_Distance": 2.4580020831209137
+        "Goal_MSE": 0.529091019513232,
+        "Imitation_MSE": 25.16081271118175,
+        "Imitation_MSE_ArcLength": 7.418492726612421,
+        "Goal_Ori_Angle_deg": 1.0820013421052272,
+        "Imitation_Ori_Angle_deg": 4.651799644352953,
+        "Goal_MSE_Std": 0.5847546656979933,
+        "Imitation_MSE_Std": 36.00711281112009,
+        "Imitation_MSE_ArcLength_Std": 5.931442149990329,
+        "Positional DTW_Distance": 21.695724672602132,
+        "Orientation DTW_Distance": 2.436463506169594
     },
     "off_manifold": {
         "samples_per_path": 200,
@@ -47,6 +48,6 @@
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 13.661288309000156
+        "graph_construction_s": 23.61657013099466
     }
 }

@@ -42,7 +42,7 @@ class Geodesic(object):
         return torch.optim.Adam(curve.parameters(), lr=1e-2)
 
 
-def geodesic_minimizing_energy(curve, manifold, optimizer=torch.optim.Adam, max_iter=150, eval_grid=20):
+def geodesic_minimizing_energy(curve, manifold, optimizer=torch.optim.Adam, max_iter=1500, eval_grid=20):
     """
     Compute a geodesic curve connecting two points by minimizing its energy.
 

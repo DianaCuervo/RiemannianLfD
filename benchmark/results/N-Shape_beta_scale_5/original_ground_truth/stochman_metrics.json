@@ -6,33 +6,33 @@
     "beta_scale": "5",
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 45.990013839285716,
-        "Radial_Error": 1.9171197962464248e-08,
-        "Max_Radial": 1.6858739115832577e-07,
-        "MSE_Mean": 45.990013839285716,
+        "MSE_Error": 45.066316071428574,
+        "Radial_Error": 5.880245907974313e-07,
+        "Max_Radial": 1.3486991292666062e-06,
+        "MSE_Mean": 45.066316071428574,
         "MSE_Std": 0.0,
-        "Radial_Mean": 1.9171197962464248e-08,
-        "Radial_Std": 4.189169544588367e-08
+        "Radial_Mean": 5.880245907974313e-07,
+        "Radial_Std": 3.930760499315511e-07
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.5290185258168607,
-        "Imitation_MSE": 302.0691733088877,
-        "Imitation_MSE_ArcLength": 255.68052027672934,
-        "Goal_Ori_Angle_deg": 1.082000393894355,
-        "Imitation_Ori_Angle_deg": 15.013514440097047,
-        "Goal_MSE_Std": 0.5847473898515902,
-        "Imitation_MSE_Std": 234.5919399980837,
-        "Imitation_MSE_ArcLength_Std": 203.53600685965773,
-        "Positional DTW_Distance": 137.59913400046284,
-        "Orientation DTW_Distance": 13.699580718891317
+        "Goal_MSE": 0.5290185989380078,
+        "Imitation_MSE": 296.52246811464323,
+        "Imitation_MSE_ArcLength": 250.46482903079524,
+        "Goal_Ori_Angle_deg": 1.082000464390555,
+        "Imitation_Ori_Angle_deg": 14.840103144777615,
+        "Goal_MSE_Std": 0.5847475059585946,
+        "Imitation_MSE_Std": 233.62254459825868,
+        "Imitation_MSE_ArcLength_Std": 202.32273800537746,
+        "Positional DTW_Distance": 135.83797305333843,
+        "Orientation DTW_Distance": 13.509681946184374
     },
     "off_manifold": {
         "samples_per_path": 200,
         "num_paths": 700,
         "alpha_0.25": {
             "tau": 0.5328851927288145,
-            "paths_pct": 44.42857360839844,
-            "points_pct": 4.436428546905518
+            "paths_pct": 42.85714340209961,
+            "points_pct": 4.160714149475098
         },
         "alpha_0.5": {
             "tau": 5.442063698319996,

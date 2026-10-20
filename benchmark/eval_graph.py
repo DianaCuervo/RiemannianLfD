@@ -1,3 +1,4 @@
+import math
 import os
 import torch
 
@@ -5,8 +6,26 @@ from GeodesicMotionSkills.Experiments.Utils import discretized_manifold
 from benchmark.data_utils import save_latent_paths_stochman, save_json
 from benchmark.metrics import evaluate_predictions
 from benchmark.off_manifold import DENSE_SAMPLES
-from benchmark.timing import QueryTimer, summarize, device_label, WARMUP_QUERIES
+from benchmark.timing import QueryTimer, summarize, describe, cpu_threads, timing_settings, device_label, WARMUP_QUERIES
 from node.utils.plots import visualize_gtvspred_comparison_multiple, save_test_plot
+
+
+def graph_grid(fw_cfg, dataset_type, z_data):
+    """(latent_frame, graph_size) of the graph planner's grid [-frame, frame]^2.
+
+    With auto_frame the grid is widened to cover the encoded benchmark data (frame_margin x max |z|), and
+    graph_size grows so the node spacing stays that of graph_size nodes over the configured latent_frame.
+    A fixed [-15, 15]^2 grid left 13 % of the N queries with an end point outside it, snapped to the border."""
+    graph_size = int(fw_cfg['graph_size'])
+    cfg = fw_cfg[dataset_type]
+    frame = float(cfg.get('latent_frame', 10))
+    if cfg.get('auto_frame'):
+        spacing = 2 * frame / (graph_size - 1)
+        needed = float(cfg.get('frame_margin', 1.1)) * float(torch.as_tensor(z_data).abs().max())
+        if needed > frame:                                   # only ever widened, never shrunk
+            frame = needed
+            graph_size = int(math.ceil(2 * frame / spacing)) + 1
+    return frame, graph_size
 
 
 def graph_benchmark(model , z1_test, z2_test, time_steps, discrete_model=None, dense_time_steps=None, device='cpu'):
@@ -72,14 +91,12 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mod
     # ==========================================
     # 2. PREPARE DISCRETE MANIFOLD (one-off cost)
     # ==========================================
-    graph_size = fw_cfg['graph_size']
-    dataset_fw_cfg = fw_cfg[dataset_type]
-    latent_max = dataset_fw_cfg.get('latent_frame', '10')
+    latent_max, graph_size = graph_grid(fw_cfg, dataset_type, ground_truth.detach().cpu())
 
     ran = torch.linspace(-latent_max, latent_max, graph_size, device=device)
     x, y = torch.meshgrid(ran, ran)
     grid = torch.cat((x.unsqueeze(0), y.unsqueeze(0)))
-    print(f"Graph-size for manifold: {graph_size}")
+    print(f"Graph-size for manifold: {graph_size} x {graph_size} on [-{latent_max:.2f}, {latent_max:.2f}]^2")
     print("Compute graph-based manifold ...")
     with QueryTimer(device) as timer:
         discrete_model = discretized_manifold.DiscretizedManifold(vae_model, grid)
@@ -90,15 +107,17 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mod
     # 3. INFERENCE
     # ==========================================
     print("\nRunning Inference...")
-    graph_latent_paths_BM, graph_dense_paths, times = graph_benchmark(
-        vae_model, z1, z2, t_steps, discrete_model=discrete_model, dense_time_steps=t_dense, device=device)
+    # On CPU the per-query loop is pinned to the configured thread count (same as NODE)
+    with cpu_threads(timing_settings(dataset_cfg)['cpu_threads'], device) as pinned:
+        graph_latent_paths_BM, graph_dense_paths, times = graph_benchmark(
+            vae_model, z1, z2, t_steps, discrete_model=discrete_model, dense_time_steps=t_dense, device=device)
 
     graph_predictions = torch.stack([path.to(device) for path in graph_latent_paths_BM])
     graph_dense = torch.stack([path.cpu() for path in graph_dense_paths])
     timing = summarize(times)
     print(f"Ground Shape: {ground_truth.shape}")
     print(f"Graph predictions shape: {graph_predictions.shape}")
-    print(f"⏱️ Per-query time: median {timing['median_s']:.4f} s (IQR {timing['iqr_s']:.4f} s)")
+    print(f"⏱️ Per-query time ({device_label(device)}, threads={pinned.threads or 'all'}): {describe(timing)}")
 
     # ==========================================
     # 4. CALCULATE METRICS
@@ -116,6 +135,7 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mod
         "shape": bench['shape'],
         "beta_scale": bench['beta'],
         "graph_size": graph_size,
+        "latent_frame": latent_max,
         **metrics,
         "one_off_costs": {"graph_construction_s": graph_construction_time},
     }
@@ -126,6 +146,7 @@ def run_graph_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mod
         "framework": "Graph",
         "variant": "default",
         "device": label,
+        "cpu_threads": pinned.threads,
         "warmup_queries": WARMUP_QUERIES,
         "per_query": timing,
         "graph_construction_s": graph_construction_time,

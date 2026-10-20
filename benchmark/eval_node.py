@@ -4,7 +4,7 @@ import torch
 from benchmark.data_utils import save_latent_paths_node, save_json
 from benchmark.metrics import evaluate_predictions
 from benchmark.off_manifold import DENSE_SAMPLES
-from benchmark.timing import QueryTimer, summarize, device_label, WARMUP_QUERIES
+from benchmark.timing import QueryTimer, summarize, describe, cpu_threads, timing_settings, device_label, WARMUP_QUERIES
 from node.evaluation.node_test import load_trained_node
 from node.utils.plots import save_test_plot, visualize_gtvspred_comparison_multiple
 
@@ -90,21 +90,35 @@ def run_node_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mode
     print("\nRunning Inference...")
     num_queries = z1.shape[0]
 
-    def solve(i, t):
-        return my_model(z1[i:i + 1], z2[i:i + 1], t)[:, 0, 0, :]  # [T, 2]
+    # Single paths are timed on the timing device (CPU by default: on GPU, kernel-launch overhead
+    # dominates a batch-size-1 RK4 rollout), with a copy of the same weights there
+    timing_cfg = timing_settings(dataset_cfg)
+    time_device = timing_cfg['single_path_device'] or device
+    if device_label(time_device) == device_label(device):
+        timed_model = my_model
+    else:
+        timed_model = load_trained_node(model_path=model_path, latent_dim=latent_d, hidden_dim=hidden_d,
+                                        device=time_device)
+    z1_t, z2_t, t_steps_t = z1.to(time_device), z2.to(time_device), t_steps.to(time_device)
+
+    def solve(i):
+        return timed_model(z1_t[i:i + 1], z2_t[i:i + 1], t_steps_t)[:, 0, 0, :]  # [T, 2]
 
     proxy_list, times = [], []
     with torch.no_grad():
-        for i in range(min(WARMUP_QUERIES, num_queries)):
-            solve(i, t_steps)
+        with cpu_threads(timing_cfg['cpu_threads'], time_device) as pinned:
+            for i in range(min(WARMUP_QUERIES, num_queries)):
+                solve(i)
 
-        for i in range(num_queries):
-            with QueryTimer(device) as timer:
-                path = solve(i, t_steps)
-            times.append(timer.elapsed)
-            proxy_list.append(path)
+            for i in range(num_queries):
+                with QueryTimer(time_device) as timer:
+                    path = solve(i)
+                times.append(timer.elapsed)
+                proxy_list.append(path.to(device))
 
-        # Batched throughput: all queries in one call (a NODE advantage, but not the per-query time)
+        # Batched throughput: all queries in one call (a NODE advantage, but not the per-query time).
+        # One untimed call first: the per-query loop may have warmed up a CPU copy, not this model.
+        my_model(z1, z2, t_steps)
         with QueryTimer(device) as timer:
             my_model(z1, z2, t_steps)
         batched_time = timer.elapsed
@@ -116,8 +130,8 @@ def run_node_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mode
     timing = summarize(times)
     print(f"Ground Shape: {ground_truth.shape}")
     print(f"Proxy Shape: {proxy_geos.shape}")
-    print(f"⏱️ Per-query time: median {timing['median_s']:.4f} s (IQR {timing['iqr_s']:.4f} s) | "
-          f"batched ({num_queries} paths): {batched_time:.4f} s")
+    print(f"⏱️ Per-query time ({device_label(time_device)}, threads={pinned.threads or 'all'}): {describe(timing)}")
+    print(f"⏱️ Batched ({num_queries} paths, {device_label(device)}): {batched_time:.4f} s")
 
     # ==========================================
     # 4. CALCULATE METRICS
@@ -141,14 +155,16 @@ def run_node_benchmark(dataset_cfg, fw_cfg, bench, results_dir, device, vae_mode
     }
     save_json(metrics_report, os.path.join(results_dir, f"{tag}_metrics.json"))
 
-    label = device_label(device)
+    label = device_label(time_device)
     timing_report = {
         "framework": "NODE",
         "variant": variant,
         "device": label,
+        "cpu_threads": pinned.threads,
         "warmup_queries": WARMUP_QUERIES,
         "per_query": timing,
         "batched_throughput": {
+            "device": device_label(device),
             "num_queries": num_queries,
             "total_s": batched_time,
             "per_query_equivalent_s": batched_time / num_queries,

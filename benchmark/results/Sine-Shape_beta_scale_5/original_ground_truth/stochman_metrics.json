@@ -6,43 +6,43 @@
     "beta_scale": "5",
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 25.841663169642857,
-        "Radial_Error": 2.0733901706648794e-08,
-        "Max_Radial": 1.1920928955078125e-07,
-        "MSE_Mean": 25.841663169642857,
+        "MSE_Error": 25.475579352678572,
+        "Radial_Error": 5.307870196702424e-07,
+        "Max_Radial": 1.4354699260366033e-06,
+        "MSE_Mean": 25.475579352678572,
         "MSE_Std": 0.0,
-        "Radial_Mean": 2.0733901706648794e-08,
-        "Radial_Std": 3.965840633668449e-08
+        "Radial_Mean": 5.307870196702424e-07,
+        "Radial_Std": 3.3924536069207534e-07
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.5375433192004746,
-        "Imitation_MSE": 78.48097029957475,
-        "Imitation_MSE_ArcLength": 67.37921458950503,
-        "Goal_Ori_Angle_deg": 1.5621304081828826,
-        "Imitation_Ori_Angle_deg": 8.02902423667725,
-        "Goal_MSE_Std": 0.813025533056961,
-        "Imitation_MSE_Std": 53.68646461486996,
-        "Imitation_MSE_ArcLength_Std": 46.436452298306584,
-        "Positional DTW_Distance": 73.11258053475096,
-        "Orientation DTW_Distance": 7.400856479935428
+        "Goal_MSE": 0.537543340320243,
+        "Imitation_MSE": 77.59018994818534,
+        "Imitation_MSE_ArcLength": 66.30587544792743,
+        "Goal_Ori_Angle_deg": 1.562130506575571,
+        "Imitation_Ori_Angle_deg": 7.962734294500533,
+        "Goal_MSE_Std": 0.8130256253858009,
+        "Imitation_MSE_Std": 53.817082200823215,
+        "Imitation_MSE_ArcLength_Std": 46.41300522665234,
+        "Positional DTW_Distance": 72.25326256602924,
+        "Orientation DTW_Distance": 7.317876925284831
     },
     "off_manifold": {
         "samples_per_path": 200,
         "num_paths": 700,
         "alpha_0.25": {
             "tau": 0.10257783379909569,
-            "paths_pct": 85.28572082519531,
-            "points_pct": 18.59642791748047
+            "paths_pct": 84.14286041259766,
+            "points_pct": 18.147857666015625
         },
         "alpha_0.5": {
             "tau": 4.779433866853974,
-            "paths_pct": 7.571428298950195,
-            "points_pct": 0.47857141494750977
+            "paths_pct": 6.571428298950195,
+            "points_pct": 0.4300000071525574
         },
         "alpha_0.75": {
             "tau": 9.456289899908853,
-            "paths_pct": 0.2857142686843872,
-            "points_pct": 0.004285714589059353
+            "paths_pct": 0.0,
+            "points_pct": 0.0
         }
     },
     "one_off_costs": {}
