@@ -507,6 +507,6 @@ def main_iterative_vae():
 
 if __name__ == "__main__":
     print("Hello world!")
-    #main_iterative_vae()
-    main_original()
+    main_iterative_vae()
+    #main_original()
     print("Bye bye!")
