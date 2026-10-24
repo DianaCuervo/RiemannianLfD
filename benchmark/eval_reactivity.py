@@ -119,7 +119,7 @@ def run_suite(method_tag, rollout_fn, bench, pset, perturber, scorer, rcfg, out_
 
 def _print_table(tag, rows, rcfg):
     p = rcfg['control_periods_ms'][-1]
-    print(f"\n{tag}: condition | n | success % | diverged % | goal mm (median) | cycles | extra length % | "
+    print(f"\n{tag}: condition | n | success % | latent success % | diverged % | goal mm (median) | cycles | extra length % | "
           f"off after event (a=0.5) % | reaction ms (median / mean / p95) | cycle ms (median / p95) | "
           f"missed cycles @{p} ms | delay steps | planner ok %")
     for r in rows:
@@ -128,7 +128,8 @@ def _print_table(tag, rows, rcfg):
         name = f"{r['type']} {r['magnitude']:g}" + (f" @{r['at_fraction']:g}" if r['at_fraction'] else '') + \
                (f" {r['apply_to']} {r['rot_deg']:g}deg" if r['apply_to'] else '')
         f = lambda v, fmt: (fmt % v) if v is not None else '-'
-        print(f"  {name:28s} {r['n']:4d} {f(r['success_pct'], '%6.1f')} {f(r['diverged_pct'], '%5.1f')} "
+        print(f"  {name:28s} {r['n']:4d} {f(r['success_pct'], '%6.1f')} {f(r['success_latent_pct'], '%6.1f')} "
+              f"{f(r['diverged_pct'], '%5.1f')} "
               f"{f(r['goal_pos_mm_median'], '%7.2f')} {f(r['cycles_median'], '%5.0f')} "
               f"{f(r['extra_length_pct_median'], '%7.1f')} {f(r['off_after_event_alpha_0.5_pct'], '%6.1f')} "
               f"{f(r['reaction_ms_median'], '%8.2f')} / {f(r['reaction_ms_mean'], '%8.2f')} / {f(r['reaction_ms_p95'], '%8.2f')} "
