@@ -108,6 +108,10 @@ def main():
     results_dir = os.path.join(RESULTS_DIR, vae_name)
     trajectories = load_vae_trajectories(dataset_cfg)
     vae = load_trained_vae(vae_cfg, trajectories)
+    # test (graph planner on a latent grid) and visualize (metric heatmap) draw the latent space as a 2-D grid
+    if vae.d > 2:
+        raise SystemExit(f"--mode {args.mode} supports a 2-D latent space only (this VAE has d = {vae.d}); "
+                         f"check the manifold with .claude/sheet_tools/check_latent_manifold.py")
 
     if args.mode == 'test':
         test_id = args.test_id if args.test_id is not None else dataset_cfg.get('test_id', 0)

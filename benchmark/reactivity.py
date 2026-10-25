@@ -16,6 +16,10 @@ Suites (one condition per selected query, balanced, seeded, identical for every 
                the goal or both, before the run (no imitation metrics: there is no demonstration)
 
 Each perturbed rollout is paired with an unperturbed rollout of the same method and query.
+Every method is scored the same way: at its closest approach to the (current) goal after the last push or
+goal switch (under disturbance, after the first disturbance), with the whole run saved for the path metrics.
+A planner's replan that leaves the latent range is not executed (the robot keeps its previous plan), and the
+cycles spent waiting for a replan extend the run's budget, so a slow replan can still arrive.
 Dynamics are simulated in latent space; the timed block of a NODE cycle also includes the
 encode/decode a robot would need, but the state is propagated from the latent point itself, so
 the encoder/decoder round trip does not add drift to the simulation.
@@ -206,6 +210,18 @@ def _delay_steps(ms, period_ms):
     return int(ms // period_ms) if period_ms else 0
 
 
+def _budget(max_steps, delays, max_total_steps=None):
+    """Control cycles a run may take: max_steps, plus the cycles spent waiting for replans (or late commands),
+    at most max_total_steps (None: no cap). Without the extension a replan slower than the run never arrives."""
+    b = max_steps + int(np.sum(delays)) if delays else max_steps
+    return b if max_total_steps is None else min(b, max_total_steps)
+
+
+def _score_index(states, best_k):
+    """Index of states[best_k] once the non-finite states are dropped from the saved path."""
+    return sum(bool(torch.isfinite(x).all()) for x in states[:best_k + 1]) - 1
+
+
 def _retime(P, speed, max_points):
     """Resample a replanned path [n, 2] so it is followed at the run's nominal speed (latent length per control
     step of the initial plan): as many steps as its own length needs, sampled uniformly in the planner's own
@@ -222,12 +238,13 @@ def _retime(P, speed, max_points):
 
 
 def node_rollout(model, perturber, z0, g0, sc, dt, max_steps, tol, patience, stall, timing_device='cpu',
-                 period_ms=None, bound=None):
+                 period_ms=None, bound=None, max_total_steps=None):
     """NODE as a policy: one RK4 step of f(z, g) per control cycle; no replanning.
 
     period_ms: replan-delay model (None: commands are available instantly). A cycle that takes longer than the
     control period delivers its command floor(ms / period) cycles late; meanwhile the robot keeps its previous
-    velocity. With ~0.5-1 ms cycles and a 10 ms period this never triggers, but the rule is the planners' rule.
+    velocity. With ~0.5-1 ms cycles and a 10 ms period this never triggers, but the rule is the planners' rule
+    (including the budget extension by the cycles spent waiting, up to max_total_steps).
     """
     f_of = lambda g: (lambda x: model.ode_func(0, x, g))
     z, g = z0.clone(), g0.clone()
@@ -237,7 +254,8 @@ def node_rollout(model, perturber, z0, g0, sc, dt, max_steps, tol, patience, sta
     best, best_k, best_cycles = float('inf'), 0, 0
     rng = sc.noise_rng()
     with torch.no_grad():
-        for k in range(max_steps):
+        k = 0
+        while k < _budget(max_steps, delays, max_total_steps):
             event = False
             if sc.due(z, z0, g0):
                 if sc.type == 'push':
@@ -297,17 +315,21 @@ def node_rollout(model, perturber, z0, g0, sc, dt, max_steps, tol, patience, sta
             still = still + 1 if moved < stall else 0
             if still > patience:
                 break
-    # NODE's result is its closest approach to the goal after the last push or goal switch (guide Sec. 6.2);
-    # the planners end at the end of their run. n_cycles counts the control cycles up to that point.
-    states = [x for x in states[:best_k + 1] if bool(torch.isfinite(x).all())]
-    return dict(path=torch.cat(states), goal=g, step_ms=step_ms, event_ms=event_cycle_ms, replan_ms=[],
-                reaction_ms=reaction_ms, reaction_delay_steps=reaction_delay, delay_steps=delays,
-                event_step=event_step, n_cycles=best_cycles, initial_plan_ms=0.0, n_replans=0, n_end_replans=0,
+            k += 1
+    # Scored at the closest approach to the goal after the last push or goal switch (guide Sec. 6.2), as the
+    # planners are; the saved path is the whole run. n_cycles counts the control cycles up to the scoring point.
+    score_k = _score_index(states, best_k)
+    states = [x for x in states if bool(torch.isfinite(x).all())]
+    return dict(path=torch.cat(states), score_k=score_k, goal=g, step_ms=step_ms, event_ms=event_cycle_ms,
+                replan_ms=[], reaction_ms=reaction_ms, reaction_delay_steps=reaction_delay, delay_steps=delays,
+                event_step=event_step, n_cycles=best_cycles, n_cycles_total=cycles, initial_plan_ms=0.0,
+                n_replans=0, n_end_replans=0, n_rejected_plans=None, reaction_rejected=None, replan_arrived=None,
+                budget_cycles=_budget(max_steps, delays, max_total_steps),
                 compute_ms_total=float(np.sum(step_ms)), diverged=diverged, planner_success=None)
 
 
 def planner_rollout(plan, perturber, z0, g0, sc, dt, max_steps, tol, replan_every, plan_device,
-                    timing_device, period_ms=None, bound=None):
+                    timing_device, period_ms=None, bound=None, max_total_steps=None):
     """Planner: plan once, follow the plan (velocity feed-forward), replan on every event.
 
     Replans are timed on plan_device (the device the planner runs on); normal cycles on timing_device.
@@ -316,66 +338,96 @@ def planner_rollout(plan, perturber, z0, g0, sc, dt, max_steps, tol, replan_ever
     period_ms: replan-delay model (None: a replan takes no simulated time). A replan of `ms` takes
     floor(ms / period) control cycles; meanwhile the robot keeps executing the old plan (from its current,
     possibly pushed state), or holds once the old plan is used up. No new replan starts while one is in flight,
-    except for a push / goal switch, which supersedes it.
+    except for a push / goal switch, which supersedes it. The cycles spent waiting extend the budget
+    (max_steps), up to max_total_steps.
+    plan(p0, p1) -> (P, ok, valid). An invalid plan (its curve leaves the latent range) is not executed: when it
+    becomes available it is dropped and the robot keeps the previous plan, or holds; it counts in n_rejected_plans.
     """
     z, g = z0.clone(), g0.clone()
     states, cycle_ms, replan_ms, delays, successes = [z.clone()], [], [], [], []
-    reaction_ms, reaction_delay, event_step = None, None, None
+    reaction_ms, reaction_delay, reaction_rejected, event_step = None, None, None, None
     pending, end_replans, next_replan_k, diverged, cycles = None, 0, replan_every, False, 0
+    n_rejected, replan_arrived = 0, None
+    best, best_k, best_cycles = float('inf'), 0, 0
     rng = sc.noise_rng()
 
     def replan(zc, gc):
         x_meas = perturber.pose(zc)
         with QueryTimer(plan_device) as tm:                      # synchronises if the planner runs on the GPU
             perturber.encode(x_meas)
-            P, ok = plan(zc.to(plan_device), gc.to(plan_device))
+            P, ok, valid = plan(zc.to(plan_device), gc.to(plan_device))
             perturber.vae.decode(P[1:2].cpu())
         successes.append(ok)
-        return P.detach().cpu(), tm.elapsed * 1e3
+        return P.detach().cpu(), tm.elapsed * 1e3, valid
 
-    P, initial_ms = replan(z, g)                                  # the robot is at rest: no delay
+    P, initial_ms, valid = replan(z, g)                           # the robot is at rest: no delay
     speed = float((P[1:] - P[:-1]).norm(dim=-1).sum()) / max(P.shape[0] - 1, 1)   # nominal latent length per step
+    if not valid:                                                 # hold; the end of this empty plan triggers a replan
+        n_rejected += 1
+        speed = float((g - z).norm()) / max(P.shape[0] - 1, 1)
+        P = z.clone()
     i = 0
     with torch.no_grad():
-        for k in range(max_steps):
-            cause = None
+        k = 0
+        while k < _budget(max_steps, delays, max_total_steps):
+            cause, event = None, False
             if sc.due(z, z0, g0):
                 if sc.type == 'push':
                     z = perturber.perturb(z, sc.cond['magnitude'] * sc.push_dir)
                     states.append(z.clone())
                 else:
                     g = sc.new_goal.clone()
-                cause = 'event'
+                cause, event = 'event', True
             elif sc.type == 'disturbance' and k > 0:
                 z = perturber.perturb(z, sc.cond['magnitude'] * torch.randn(2, generator=rng))
                 states.append(z.clone())
+                event = True
                 if k >= next_replan_k and pending is None:
                     cause = 'disturbance'
-            if sc.type != 'none' and event_step is None and (cause == 'event' or sc.type == 'disturbance' and k > 0):
+            if event and event_step is None:
                 event_step = len(states) - 1                          # first perturbation, same rule as NODE
+            # Scoring point as for NODE: the closest approach after the push / goal switch, or after the first
+            # disturbance
+            if event and (sc.type in ('push', 'goal_switch') or event_step == len(states) - 1):
+                best, best_k, best_cycles = float('inf'), len(states) - 1, cycles
             if _diverged(z, bound):
                 diverged = True
                 break
             if pending is not None and k >= pending[1]:               # a replan in flight is now available
-                P, i, pending = pending[0], 0, None
+                if pending[2]:
+                    P, i = pending[0], 0
+                else:
+                    n_rejected += 1
+                if pending[3] == 'event':
+                    replan_arrived = True
+                pending = None
             if cause is None and pending is None and not sc.pending() and i >= P.shape[0] - 1:
                 if float((z - g).norm()) < tol or end_replans >= MAX_END_REPLANS:
                     break                                             # end of the plan
                 cause, end_replans = 'end', end_replans + 1           # plan used up away from the goal
             if cause is not None:
-                P_new, t = replan(z, g)
-                P_new = _retime(P_new, speed, max_steps)                         # keep the nominal speed (untimed)
+                P_new, t, valid = replan(z, g)
+                if valid:
+                    P_new = _retime(P_new, speed, max_steps)                     # keep the nominal speed (untimed)
                 n = _delay_steps(t, period_ms)
                 replan_ms.append(t)
                 delays.append(n)
                 if reaction_ms is None and cause != 'end':
-                    reaction_ms, reaction_delay = t, n
+                    reaction_ms, reaction_delay, reaction_rejected = t, n, not valid
                 if cause == 'disturbance':
                     next_replan_k = k + n + replan_every              # counted from when the plan is available
+                if cause == 'event':
+                    replan_arrived = False
                 if n == 0:
-                    P, i, pending = P_new, 0, None
+                    if valid:
+                        P, i = P_new, 0
+                    else:
+                        n_rejected += 1
+                    if cause == 'event':
+                        replan_arrived = True
+                    pending = None
                 else:
-                    pending = (P_new, k + n)
+                    pending = (P_new, k + n, valid, cause)
             if i < P.shape[0] - 1:
                 with QueryTimer(timing_device) as tm:                 # normal cycle: next plan point
                     perturber.vae.decode(P[i + 1:i + 2])
@@ -387,20 +439,27 @@ def planner_rollout(plan, perturber, z0, g0, sc, dt, max_steps, tol, replan_ever
                 break
             states.append(z.clone())
             cycles += 1
-            if float((z - g).norm()) < tol and not sc.pending():
+            d = float((z - g).norm())
+            if d < best:
+                best, best_k, best_cycles = d, len(states) - 1, cycles
+            if d < tol and not sc.pending():
                 break
+            k += 1
+    score_k = _score_index(states, best_k)
     states = [x for x in states if bool(torch.isfinite(x).all())]
-    return dict(path=torch.cat(states), goal=g, step_ms=cycle_ms, event_ms=[], replan_ms=replan_ms,
+    return dict(path=torch.cat(states), score_k=score_k, goal=g, step_ms=cycle_ms, event_ms=[], replan_ms=replan_ms,
                 reaction_ms=reaction_ms, reaction_delay_steps=reaction_delay, delay_steps=delays,
-                event_step=event_step, n_cycles=cycles, initial_plan_ms=initial_ms, n_replans=len(replan_ms),
-                n_end_replans=end_replans,
+                event_step=event_step, n_cycles=best_cycles, n_cycles_total=cycles, initial_plan_ms=initial_ms,
+                n_replans=len(replan_ms), n_end_replans=end_replans, n_rejected_plans=n_rejected,
+                reaction_rejected=reaction_rejected, replan_arrived=replan_arrived,
+                budget_cycles=_budget(max_steps, delays, max_total_steps),
                 compute_ms_total=float(initial_ms + np.sum(replan_ms) + np.sum(cycle_ms)), diverged=diverged,
                 planner_success=float(np.mean(successes)) if successes else None)
 
 
 def make_graph_planner(vae, discrete_model, T, latent_frame):
-    """Graph planner. A plan counts as failed (planner_success) when an end point lies outside the
-    grid [-latent_frame, latent_frame]^2 (the graph snaps it to the border), or when the fitted curve itself
+    """Graph planner. A plan is invalid (and counts as failed in planner_success) when an end point lies outside
+    the grid [-latent_frame, latent_frame]^2 (the graph snaps it to the border), or when the fitted curve itself
     leaves the grid: the spline fit to the Dijkstra path can overshoot far beyond the graph."""
     alpha = torch.linspace(0, 1, T).reshape(-1, 1)
 
@@ -409,11 +468,13 @@ def make_graph_planner(vae, discrete_model, T, latent_frame):
         a = alpha.to(curve.device)
         P = curve(a.transpose(1, 0)).detach().reshape(T, -1)
         inside = bool(torch.cat([p0.reshape(-1, 2), p1.reshape(-1, 2), P]).abs().max() <= latent_frame)
-        return P, inside
+        return P, inside, inside
     return plan
 
 
-def make_stochman_planner(vae, T, device):
+def make_stochman_planner(vae, T, device, bound=None):
+    """Stochman planner. planner_success is its own convergence flag (met its test within max_iter), which is
+    false for most plans that are fine; validity is separate: the curve is finite and stays within `bound`."""
     from stochman.manifold import Manifold
     from stochman.curves import CubicSpline
     t = torch.linspace(0, 1, T, device=device)
@@ -421,7 +482,9 @@ def make_stochman_planner(vae, T, device):
     def plan(p0, p1):
         p0, p1 = p0.reshape(1, -1), p1.reshape(1, -1)
         C, success = Manifold.connecting_geodesic(vae, p0, p1, init_curve=CubicSpline(p0, p1).to(device))
-        return C(t).detach().reshape(T, -1), bool(success)
+        P = C(t).detach().reshape(T, -1)
+        valid = bool(torch.isfinite(P).all()) and (bound is None or float(P.abs().max()) <= bound)
+        return P, bool(success), valid
     return plan
 
 
@@ -454,14 +517,15 @@ class RolloutScorer:
 
     def score(self, ro, ref_ro, rcfg, sc):
         path, g = ro['path'], ro['goal'].reshape(1, 2)
+        ks = ro['score_k']
         x = self.ambient(path)
         xg = self.ambient(g)[0]
         pd = self.pos_dof
-        end = x[-1]
+        end = x[ks]
         q1, q2 = end[pd:] / np.linalg.norm(end[pd:]), xg[pd:] / np.linalg.norm(xg[pd:])
         rot_err = float(np.degrees(2 * np.arccos(min(1.0, abs(float(np.dot(q1, q2)))))))
         pos_err = float(np.linalg.norm(end[:2] - xg[:2]))
-        lat_err = float((path[-1:] - g).norm()) / self.span * 100
+        lat_err = float((path[ks:ks + 1] - g).norm()) / self.span * 100
         length = float(np.linalg.norm(np.diff(x[:, :2], axis=0), axis=1).sum())
         tol = rcfg['tolerance']
         k0 = ro['event_step'] if ro['event_step'] is not None else 0
@@ -470,21 +534,25 @@ class RolloutScorer:
         k_goal = min(k0, path.shape[0] - 1) if sc.type in ('push', 'goal_switch') else 0
         closest = float((path[k_goal:] - g).norm(dim=-1).min()) / self.span * 100
         r = {
-            # Scored at the end of the saved path (NODE: closest approach after the last event, guide Sec. 6.2;
-            # planners: last state of the run); a diverged run is a failure
+            # Scored at the closest approach to the goal after the last event (guide Sec. 6.2), for every method;
+            # the path metrics below use the whole run. A diverged run is a failure.
             'success': bool(pos_err < tol['pos_mm'] and rot_err < tol['rot_deg']) and not diverged,
             'success_latent': bool(lat_err < tol['latent_pct']) and not diverged,
             'diverged': diverged,
             'goal_pos_mm': pos_err, 'goal_rot_deg': rot_err, 'goal_latent_pct': lat_err,
             'closest_latent_pct': closest,
-            # control cycles until the run stopped (time to goal); not the number of saved states, which under
-            # disturbance holds two per cycle (after the noise and after the step)
-            'length_mm': length, 'cycles': int(ro['n_cycles']),
+            # control cycles until the scoring point (time to goal) and until the run stopped; not the number of
+            # saved states, which under disturbance holds two per cycle (after the noise and after the step)
+            'length_mm': length, 'cycles': int(ro['n_cycles']), 'cycles_total': int(ro['n_cycles_total']),
             'reaction_ms': ro['reaction_ms'], 'n_replans': ro['n_replans'], 'n_end_replans': ro['n_end_replans'],
             'reaction_delay_steps': ro['reaction_delay_steps'], 'delayed_steps_total': int(np.sum(ro['delay_steps'])),
             'cycle_ms_median': float(np.median(ro['step_ms'])) if ro['step_ms'] else None,
             'compute_ms_total': ro['compute_ms_total'],
             'planner_success': ro['planner_success'],
+            # planners: plans dropped as invalid, whether the first reaction replan was one of them, and whether
+            # the push / goal-switch replan became available before the run ended
+            'n_rejected_plans': ro['n_rejected_plans'], 'reaction_rejected': ro['reaction_rejected'],
+            'replan_arrived': ro['replan_arrived'],
         }
         # Off-manifold: whole path and the part after the first event
         above, beyond = self.off_data(path)
@@ -531,7 +599,9 @@ def summarize(records, rcfg):
     cycle_ms_*: pooled over every control cycle of every run in the group (NODE: encode + RK4 step +
     decode; planners: following the stored plan, replans are in reaction_ms / compute_ms_total).
     Diverged runs count as failures in success_pct and are left out of the goal / length / recovery
-    statistics (n_diverged says how many); timing statistics use every run."""
+    statistics (n_diverged says how many); timing statistics use every run.
+    rejected_pct: runs with at least one plan dropped as invalid; replan_arrived_pct: push / goal-switch runs whose
+    reaction replan became available before the run ended (planners only)."""
     groups = {}
     for rec in records:
         c = rec['condition']
@@ -557,6 +627,7 @@ def summarize(records, rcfg):
                    goal_rot_deg_p95=_q([x['goal_rot_deg'] for x in m], 95),
                    extra_length_pct_median=_q([x.get('extra_length_pct') for x in m], 50),
                    cycles_median=_q([x['cycles'] for x in m], 50),
+                   cycles_total_median=_q([x['cycles_total'] for x in m], 50),
                    extra_cycles_median=_q([x.get('extra_cycles') for x in m], 50),
                    recovery_steps_median=_q([x.get('recovery_steps') for x in m], 50),
                    recovered_pct=_pct([x.get('recovery_steps') is not None for x in m]) if key[0] == 'push' else None,
@@ -572,6 +643,11 @@ def summarize(records, rcfg):
                    compute_ms_total_mean=_mean([x['compute_ms_total'] for x in m_all]),
                    compute_ms_total_p95=_q([x['compute_ms_total'] for x in m_all], 95),
                    planner_success_pct=_pct([x['planner_success'] for x in m_all if x['planner_success'] is not None]),
+                   rejected_pct=_pct([x['n_rejected_plans'] > 0 if x['n_rejected_plans'] is not None else None
+                                      for x in m_all]),
+                   rejected_plans_median=_q([x['n_rejected_plans'] for x in m_all], 50),
+                   reaction_rejected_pct=_pct([x['reaction_rejected'] for x in m_all]),
+                   replan_arrived_pct=_pct([x['replan_arrived'] for x in m_all]),
                    beyond_wall_pct=_pct([x['beyond_wall'] for x in m_all]),
                    event_fired_pct=_pct([x.get('event_fired') for x in m_all]))
         for a in ALPHAS:

@@ -49,6 +49,12 @@ def test_node(trained_model, vae_model, test_loader, save_dir, device='cpu', spa
     """
     print("\n--- Starting Testing & Visualizations ---")
 
+    # Every plot below draws the latent space as a 2-D grid
+    if trained_model.ode_func.latent_dim > 2:
+        print(f"Latent d = {trained_model.ode_func.latent_dim}: the 2-D latent plots are skipped "
+              f"(check the manifold with .claude/sheet_tools/check_latent_manifold.py)")
+        return
+
     # Ensure models are in eval mode and on the right device
     trained_model.eval()
     vae_model.eval()

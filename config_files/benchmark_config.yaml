@@ -118,6 +118,7 @@ reactivity:
     rot_deg: 5.0
     latent_pct: 2.0             # also the stop criterion of a rollout (% of the latent span)
   max_steps_factor: 3           # a rollout stops at the goal tolerance, after 3 (T-1) steps at the latest ...
+  max_budget_factor: 10         #   cycles spent waiting for a replan extend that budget, up to 10 (T-1) cycles in all
   patience: 10                  # ... or when the state has stopped moving (step < stall_pct) for 10 steps
   stall_pct: 0.01               # % of the latent span per step
   recover_band_pct: 1.0         # a pushed run has recovered once it is within 1 % of the latent span of the unperturbed run

@@ -99,10 +99,13 @@ def run_suite(method_tag, rollout_fn, bench, pset, perturber, scorer, rcfg, out_
             m['event_state_off'] = bool((above[0.5] | beyond).any())
         records.append(dict(query=i, condition=cond, metrics=m, step_ms=ro['step_ms']))
         rollouts.append(dict(query=i, condition=cond, path=ro['path'], ref_path=ref['path'], goal=ro['goal'],
+                             score_k=ro['score_k'], ref_score_k=ref['score_k'],
                              step_ms=ro['step_ms'], event_ms=ro['event_ms'], replan_ms=ro['replan_ms'],
                              initial_plan_ms=ro['initial_plan_ms'], delay_steps=ro['delay_steps'],
                              event_step=ro['event_step'], diverged=ro['diverged'],
                              ref_diverged=ref['diverged'], ref_cycles=ref['n_cycles'], n_cycles=ro['n_cycles'],
+                             n_cycles_total=ro['n_cycles_total'], budget_cycles=ro['budget_cycles'],
+                             n_rejected_plans=ro['n_rejected_plans'], replan_arrived=ro['replan_arrived'],
                              metrics=m))
         if (j + 1) % 25 == 0:
             print(f"  [{method_tag}] {j + 1}/{len(pset['idx'])} rollouts ({time.time() - t0:.0f} s)", flush=True)
@@ -121,7 +124,7 @@ def _print_table(tag, rows, rcfg):
     p = rcfg['control_periods_ms'][-1]
     print(f"\n{tag}: condition | n | success % | latent success % | diverged % | goal mm (median) | cycles | extra length % | "
           f"off after event (a=0.5) % | reaction ms (median / mean / p95) | cycle ms (median / p95) | "
-          f"missed cycles @{p} ms | delay steps | planner ok %")
+          f"missed cycles @{p} ms | delay steps | planner ok % | rejected plans % | replan arrived %")
     for r in rows:
         if r['stratum'] != 'all':
             continue
@@ -134,7 +137,8 @@ def _print_table(tag, rows, rcfg):
               f"{f(r['extra_length_pct_median'], '%7.1f')} {f(r['off_after_event_alpha_0.5_pct'], '%6.1f')} "
               f"{f(r['reaction_ms_median'], '%8.2f')} / {f(r['reaction_ms_mean'], '%8.2f')} / {f(r['reaction_ms_p95'], '%8.2f')} "
               f"{f(r['cycle_ms_median'], '%6.3f')} / {f(r['cycle_ms_p95'], '%6.3f')} {f(r[f'missed_cycles_{p}ms_median'], '%5.0f')} "
-              f"{f(r['reaction_delay_steps_median'], '%5.0f')} {f(r['planner_success_pct'], '%6.1f')}")
+              f"{f(r['reaction_delay_steps_median'], '%5.0f')} {f(r['planner_success_pct'], '%6.1f')} "
+              f"{f(r['rejected_pct'], '%6.1f')} {f(r['replan_arrived_pct'], '%6.1f')}")
 
 
 def run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model, vae_cpu, frameworks,
@@ -161,6 +165,8 @@ def run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model,
     if unknown:
         raise ValueError(f"reactivity.replan_delay: unknown mode(s) {sorted(unknown)} (use 'none' and/or 'continue')")
     T = bench['ground_truth'].shape[1]
+    # Cycles spent waiting for a replan extend a run's budget (max_steps_factor (T-1)) up to this many cycles
+    cap = int(rcfg['max_budget_factor'] * (T - 1))
 
     # (tag, rollout_fn(period_ms), extra report fields) per method
     methods = []
@@ -174,7 +180,7 @@ def run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model,
             arch = fw[bench['shape']] if dataset_cfg['type'] == 'lasa' else fw
             model = load_trained_node(path, latent_dim=arch['latent_dim'], hidden_dim=arch['hidden_dim'], device='cpu')
             make = lambda period, m=model: (lambda z0, g0, sc, dt, ms, tol: R.node_rollout(
-                m, perturber, z0, g0, sc, dt, ms, tol, rcfg['patience'], stall, timing_device, period, bound))
+                m, perturber, z0, g0, sc, dt, ms, tol, rcfg['patience'], stall, timing_device, period, bound, cap))
             methods.append((f"node_{variant}", make, {}))
 
     if 'graph' in frameworks:
@@ -190,13 +196,15 @@ def run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model,
         print(f"\n🕸️ graph {graph_size} x {graph_size} on [-{lm:.2f}, {lm:.2f}]^2, construction {tm.elapsed:.1f} s")
         graph_plan = R.make_graph_planner(vae_model, dm, T, lm)
         make = lambda period: (lambda z0, g0, sc, dt, ms, tol: R.planner_rollout(
-            graph_plan, perturber, z0, g0, sc, dt, ms, tol, rcfg['replan_every'], device, timing_device, period, bound))
+            graph_plan, perturber, z0, g0, sc, dt, ms, tol, rcfg['replan_every'], device, timing_device, period, bound,
+            cap))
         methods.append(('graph', make, {'graph_size': graph_size, 'latent_frame': lm, 'graph_construction_s': tm.elapsed}))
 
     if 'stochman' in frameworks:
-        stochman_plan = R.make_stochman_planner(vae_model, T, device)
+        stochman_plan = R.make_stochman_planner(vae_model, T, device, bound)
         make = lambda period: (lambda z0, g0, sc, dt, ms, tol: R.planner_rollout(
-            stochman_plan, perturber, z0, g0, sc, dt, ms, tol, rcfg['replan_every'], device, timing_device, period, bound))
+            stochman_plan, perturber, z0, g0, sc, dt, ms, tol, rcfg['replan_every'], device, timing_device, period, bound,
+            cap))
         methods.append(('stochman', make, {}))
 
     reports = {}
@@ -206,7 +214,8 @@ def run_reactivity_benchmark(dataset_cfg, bench, results_dir, device, vae_model,
             tag = base_tag if mode == 'none' else f"{base_tag}_delay-{mode}"
             run_info = dict(replan_delay=mode, sim_period_ms=period, timing_device=device_label(timing_device),
                             planner_device=device_label(device), cpu_threads=torch.get_num_threads(),
-                            diverge_bound=bound, latent_span=scorer.span, warmup_rollouts=WARMUP_QUERIES)
+                            diverge_bound=bound, latent_span=scorer.span, warmup_rollouts=WARMUP_QUERIES,
+                            max_total_steps=cap)
             print(f"\n🔁 {suite}: {tag}")
             reports[tag] = run_suite(tag, make(period), bench, pset, perturber, scorer, rcfg, out_dir, suite,
                                      extra={**extra, 'run_info': run_info})

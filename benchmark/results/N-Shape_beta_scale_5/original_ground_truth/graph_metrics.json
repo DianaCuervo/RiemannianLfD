@@ -4,29 +4,29 @@
     "dataset": "lasa",
     "shape": "N",
     "beta_scale": "5",
-    "graph_size": 68,
+    "graph_size": 136,
     "latent_frame": 20.3901237487793,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 4.829292327008929,
-        "Radial_Error": 0.0002383422397542745,
-        "Max_Radial": 0.0009175596060231328,
-        "MSE_Mean": 4.829292327008929,
+        "MSE_Error": 4.550600697544643,
+        "Radial_Error": 0.00023131404304876924,
+        "Max_Radial": 0.0007934937020763755,
+        "MSE_Mean": 4.550600697544643,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.0002383422397542745,
-        "Radial_Std": 0.00019255196093581617
+        "Radial_Mean": 0.00023131404304876924,
+        "Radial_Std": 0.00018831774650607258
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.529091019513232,
-        "Imitation_MSE": 25.16081271118175,
-        "Imitation_MSE_ArcLength": 7.418492726612421,
-        "Goal_Ori_Angle_deg": 1.0820013421052272,
-        "Imitation_Ori_Angle_deg": 4.651799644352953,
-        "Goal_MSE_Std": 0.5847546656979933,
-        "Imitation_MSE_Std": 36.00711281112009,
-        "Imitation_MSE_ArcLength_Std": 5.931442149990329,
-        "Positional DTW_Distance": 21.695724672602132,
-        "Orientation DTW_Distance": 2.436463506169594
+        "Goal_MSE": 0.529088384442311,
+        "Imitation_MSE": 23.627500124139157,
+        "Imitation_MSE_ArcLength": 7.242083719208278,
+        "Goal_Ori_Angle_deg": 1.0820064346828286,
+        "Imitation_Ori_Angle_deg": 4.62816343827699,
+        "Goal_MSE_Std": 0.5847533447363845,
+        "Imitation_MSE_Std": 28.016565906608346,
+        "Imitation_MSE_ArcLength_Std": 5.334705243743747,
+        "Positional DTW_Distance": 21.457156608504455,
+        "Orientation DTW_Distance": 2.4102199164271827
     },
     "off_manifold": {
         "samples_per_path": 200,
@@ -48,6 +48,6 @@
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 23.61657013099466
+        "graph_construction_s": 97.45711673999904
     }
 }

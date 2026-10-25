@@ -243,7 +243,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_processed'
+      save_dir: './node/data/{task}_d4_processed'
       min_window: 150
       max_window: 950
       samples_per_path: 50
@@ -251,7 +251,7 @@ lerobot:
       train_rat: 0.6525
       val_rat: 0.174
       model_dir: './models/node/lerobot'
-      model_name: 'NODE_{task}RiemannianMSE_EGI'
+      model_name: 'NODE_{task}d4_RiemannianMSE_EGI'
       model_train_curves_dir: './node/training/training_curves'
       model_train_logs_dir: './node/training/training_logs'
       model_test_results_dir: './node/evaluation/results/'
@@ -260,7 +260,7 @@ lerobot:
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
-      latent_dim: 2
+      latent_dim: 4                 # lerobot: d = 4 (must match the VAE's last layer)
       hidden_dim: 256 # NShape wide network
     # Integration Parameters (for the RK4 solver)
     integration:
@@ -295,7 +295,7 @@ lerobot:
       euler_order: 'xyz'                          # VERIFY against data-collection convention
       n_points: 1000                              # per-episode resample length
       trajectory_number: 46                        # the number of total demonstration files
-      save_dir: './node/data/{task}_processed'
+      save_dir: './node/data/{task}_d4_processed'
       min_window: 150
       max_window: 950
       samples_per_path: 50
@@ -303,7 +303,7 @@ lerobot:
       train_rat: 0.6525
       val_rat: 0.174
       model_dir: './models/node/lerobot'
-      model_name: 'NODE_{task}RiemannianMSE_EGI'
+      model_name: 'NODE_{task}d4_RiemannianMSE_EGI'
       model_train_curves_dir: './node/training/training_curves'
       model_train_logs_dir: './node/training/training_logs'
       model_test_results_dir: './node/evaluation/results/'
@@ -312,7 +312,7 @@ lerobot:
     run_suffix: 'energy_imitation'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
     # Model Architecture Parameters
     architecture:
-      latent_dim: 2
+      latent_dim: 4                 # lerobot: d = 4 (must match the VAE's last layer)
       hidden_dim: 256 # NShape wide network
     # Integration Parameters (for the RK4 solver)
     integration:

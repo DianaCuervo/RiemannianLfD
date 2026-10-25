@@ -29,8 +29,8 @@ def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
             K = J_raw.shape[-2]
             J = J_raw.reshape(T, K, D)
 
-            # Density from J: Trace of G (sum of squared elements of J) / 2
-            point_density = torch.sum(J ** 2, dim=(-2, -1)) / 2.0
+            # Density from J: Trace of G (sum of squared elements of J) / D (mean per latent dimension)
+            point_density = torch.sum(J ** 2, dim=(-2, -1)) / D
             total_density += point_density.sum().item()
             total_points += T
 
@@ -53,7 +53,7 @@ def calculate_dataset_baselines(vae, latent_paths, device='cpu'):
     print(f"{'=' * 60}")
     print(f"📊 RAW DATASET BASELINES CALCULATED")
     print(f"{'=' * 60}")
-    print(f"1. Ground Density (Trace/2): {safe_baseline:,.4f}")
+    print(f"1. Ground Density (Trace/d): {safe_baseline:,.4f}")
     print(f"2. Avg Demo Path Energy:     {avg_path_energy:,.4f}")
     print(f"👉 auto-calculated safe_baseline: {safe_baseline:.2f}")
     print(f"👉 auto-calculated metric_scale_energy: {recommended_scale:.2e}")

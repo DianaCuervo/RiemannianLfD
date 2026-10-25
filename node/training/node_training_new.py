@@ -261,7 +261,7 @@ def train_node_energy_goal_imitation_riemannianmse(model, vae, train_loader, val
             if w_energy > 0:
                 with torch.no_grad():
                     #mean_density = torch.diagonal(G, dim1=-2, dim2=-1).sum(-1).mean().item() / 2.0
-                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / 2.0
+                    mean_density = (J_val_pred ** 2).sum(dim=(-2, -1)).mean().item() / J_val_pred.shape[-1]
             else:
                 mean_density = 0.0
 

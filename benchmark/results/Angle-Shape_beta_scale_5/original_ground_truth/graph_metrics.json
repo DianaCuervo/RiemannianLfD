@@ -4,29 +4,29 @@
     "dataset": "lasa",
     "shape": "Angle",
     "beta_scale": "5",
-    "graph_size": 60,
+    "graph_size": 119,
     "latent_frame": 17.837389755249024,
     "num_queries_answered": 700,
     "latent_metrics": {
-        "MSE_Error": 6.047335553850447,
-        "Radial_Error": 0.00012050609802827239,
-        "Max_Radial": 0.0005115678068250418,
-        "MSE_Mean": 6.047335553850447,
+        "MSE_Error": 5.78390049874442,
+        "Radial_Error": 0.00012182142381789163,
+        "Max_Radial": 0.0005051558255217969,
+        "MSE_Mean": 5.78390049874442,
         "MSE_Std": 0.0,
-        "Radial_Mean": 0.00012050609802827239,
-        "Radial_Std": 9.576190495863557e-05
+        "Radial_Mean": 0.00012182142381789163,
+        "Radial_Std": 9.87149978755042e-05
     },
     "ambient_metrics": {
-        "Goal_MSE": 0.597321527974524,
-        "Imitation_MSE": 21.148972462569212,
-        "Imitation_MSE_ArcLength": 7.824875048395458,
-        "Goal_Ori_Angle_deg": 0.7596670039496362,
-        "Imitation_Ori_Angle_deg": 4.043252985209767,
-        "Goal_MSE_Std": 0.41967795349360754,
-        "Imitation_MSE_Std": 23.996744106817097,
-        "Imitation_MSE_ArcLength_Std": 9.264483944837103,
-        "Positional DTW_Distance": 21.444665438562797,
-        "Orientation DTW_Distance": 2.3440756517919765
+        "Goal_MSE": 0.5973188315951068,
+        "Imitation_MSE": 19.939530729880165,
+        "Imitation_MSE_ArcLength": 7.735486663845812,
+        "Goal_Ori_Angle_deg": 0.7596657502679561,
+        "Imitation_Ori_Angle_deg": 3.9380965513985964,
+        "Goal_MSE_Std": 0.41967557636593317,
+        "Imitation_MSE_Std": 22.990192833424327,
+        "Imitation_MSE_ArcLength_Std": 9.164030947468177,
+        "Positional DTW_Distance": 21.41603752257096,
+        "Orientation DTW_Distance": 2.336422621399389
     },
     "off_manifold": {
         "samples_per_path": 200,
@@ -48,6 +48,6 @@
         }
     },
     "one_off_costs": {
-        "graph_construction_s": 17.027421796999988
+        "graph_construction_s": 74.33724641299341
     }
 }
