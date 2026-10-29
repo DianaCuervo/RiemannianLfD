@@ -16,6 +16,370 @@ import random
 from vae.vae_model import get_M
 
 
+### Basic plot fns for the sphere case
+#Plot to check sphere trajectories
+def plot_sphere_trajectories(trajectory_list, draw_sphere=True):
+    """
+    Plots multiple 3D trajectories.
+    Expects a list of tensors or numpy arrays, each with shape [N, 3]
+    (where N is the number of time steps).
+    """
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Optional: Draw a faint sphere in the background for visual context
+    if draw_sphere:
+        u = np.linspace(0, 2 * np.pi, 60)
+        v = np.linspace(0, np.pi, 60)
+        x_sphere = np.outer(np.cos(u), np.sin(v))
+        y_sphere = np.outer(np.sin(u), np.sin(v))
+        z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))
+
+        ax.plot_surface(x_sphere, y_sphere, z_sphere,
+                        color='lightgray', alpha=0.1, edgecolor='none')
+        # Draw the equator
+        ax.plot(np.cos(u), np.sin(u), np.zeros_like(u),
+                color='gray', linestyle=':', alpha=0.5)
+
+    # Loop through each trajectory in the list
+    for i, traj in enumerate(trajectory_list):
+        # Convert to numpy and move to CPU if necessary
+        if torch.is_tensor(traj):
+            data = traj.detach().cpu().numpy()
+        else:
+            data = traj
+
+        # Extract x (col 0), y (col 1), and z (col 2)
+        x = data[:, 0]
+        y = data[:, 1]
+        z = data[:, 2]
+
+        # Only label the first few trajectories and the first start/end
+        # to avoid massive legend spam if there are many paths
+        traj_label = f'Trajectory {i + 1}' if i < 5 else ""
+        start_label = "Start" if i == 0 else ""
+        end_label = "End" if i == 0 else ""
+
+        # Plot the curve
+        ax.plot(x, y, z, linewidth=2, label=traj_label)
+
+        # Mark the start and end points
+        ax.scatter(x[0], y[0], z[0], color='green', s=50, zorder=5, label=start_label)
+        ax.scatter(x[-1], y[-1], z[-1], color='red', marker='*', s=150, zorder=5, label=end_label)
+
+    ax.set_title(f'Visualization of {len(trajectory_list)} 3D Trajectories', pad=20, fontsize=14)
+    ax.set_xlabel('X Position')
+    ax.set_ylabel('Y Position')
+    ax.set_zlabel('Z Position')
+
+    # 3D equivalent of plt.axis('equal') to keep the sphere perfectly round
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+
+    # Clean up the grid panes
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.grid(True, linestyle='--', alpha=0.5)
+
+    # Compile the legend, ignoring empty labels
+    handles, labels = ax.get_legend_handles_labels()
+    valid_handles = [h for h, l in zip(handles, labels) if l != ""]
+    valid_labels = [l for l in labels if l != ""]
+    if valid_handles:
+        ax.legend(valid_handles, valid_labels, loc='upper right')
+
+    plt.show()
+#Plot to check sphere datasets
+def plot_sphere_trajectories_from_dataloader(dataloader, space_name="Analytic Sphere", num_paths_to_plot=15):
+    """
+    Plots a batch of 3D trajectories from the dataloader layered directly
+    on top of the 3D unit sphere manifold.
+    """
+    print(f"Plotting dataloader trajectories over the {space_name} manifold...")
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # ==========================================
+    # 1. RENDER THE BACKGROUND MANIFOLD (3D SPHERE)
+    # ==========================================
+    # Create a spherical mesh grid
+    u = np.linspace(0, 2 * np.pi, 100)  # Longitude
+    v = np.linspace(0, np.pi, 100)  # Colatitude
+    x_sphere = np.outer(np.cos(u), np.sin(v))
+    y_sphere = np.outer(np.sin(u), np.sin(v))
+    z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))
+
+    # Plot the surface as translucent blue
+    ax.plot_surface(x_sphere, y_sphere, z_sphere, color='orange', alpha=0.2,
+                    edgecolor='gray', linewidth=0.2)
+
+    # Plot the equator for spatial reference
+    ax.plot(np.cos(u), np.sin(u), np.zeros_like(u), color='gray', linestyle='--', alpha=0.5)
+
+    # ==========================================
+    # 2. OVERLAY THE DATALOADER TRAJECTORIES
+    # ==========================================
+    batch = next(iter(dataloader))
+
+    # --- THE FIX: Smart Data Extraction ---
+    # If your dataloader returns (p1, p2, target_traj), the path is at index 2
+    if isinstance(batch, (list, tuple)) and len(batch) >= 3:
+        gt_traj_batch = batch[2]
+    else:
+        # Fallback for simple TensorDatasets
+        gt_traj_batch = batch[0]
+
+        # Shape of gt_traj_batch should now correctly be [Batch, Time, 3]
+
+    # Restrict the number of paths so the plot doesn't become a messy hairball
+    actual_paths_to_plot = min(num_paths_to_plot, gt_traj_batch.shape[0])
+
+    for i in range(actual_paths_to_plot):
+        # Only label the first line to avoid repeating in the legend
+        demo_label = 'Robot Demo Path' if i == 0 else ""
+        start_label = 'Start' if i == 0 else ""
+        goal_label = 'Goal' if i == 0 else ""
+
+        # Move tensor to CPU and Numpy for Matplotlib
+        path_np = gt_traj_batch[i].detach().cpu().numpy()  # Shape: [Time, 3]
+
+        # Extract start and end points
+        start_pt = path_np[0]
+        goal_pt = path_np[-1]
+
+        # Plot Robot Demo path
+        ax.plot(path_np[:, 0], path_np[:, 1], path_np[:, 2],
+                color='black', linestyle='--', alpha=0.8, linewidth=2, label=demo_label)
+
+        # Plot Start
+        ax.scatter(start_pt[0], start_pt[1], start_pt[2],
+                   color='green', s=60, zorder=5, label=start_label)
+
+        # Plot Goal
+        ax.scatter(goal_pt[0], goal_pt[1], goal_pt[2],
+                   color='red', marker='*', s=200, zorder=5, label=goal_label)
+
+    # ==========================================
+    # 3. FORMATTING
+    # ==========================================
+    ax.set_title(f"{space_name}: {actual_paths_to_plot} Dataloader Samples", pad=20, fontsize=14)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # Force the axes to have the same scale, keeping the sphere perfectly round
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+
+    ax.legend(loc='upper right', fontsize='medium')
+
+    # Clean up the background grid
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.grid(True, linestyle='--', alpha=0.5)
+
+    # Set a nice viewing angle
+    ax.view_init(elev=20, azim=45)
+
+    plt.show()
+## Testing fns
+# Plot fns for manifold testing
+def visualize_sphere_metric(manifold, space_name="Analytic Sphere"):
+    """
+    Renders the 3D physical surface of the manifold.
+    Replaces the 2D metric contour map.
+    """
+    print(f"Printing {space_name} Manifold...")
+
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Create a spherical mesh grid
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x_sphere = np.outer(np.cos(u), np.sin(v))
+    y_sphere = np.outer(np.sin(u), np.sin(v))
+    z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))
+
+    # Plot the surface as translucent blue
+    ax.plot_surface(x_sphere, y_sphere, z_sphere, color='orange', alpha=0.3,
+                    edgecolor='gray', linewidth=0.2)
+    # Plot the equator for spatial reference
+    ax.plot(np.cos(u), np.sin(u), np.zeros_like(u), color='gray', linestyle='--', alpha=0.8)
+
+    ax.set_title(f'Visualization of the {space_name}')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+    ax.grid(True, linestyle='--', alpha=0.6)
+    # plt.show()
+# Plot fns for node testing
+def visualize_sphere_path_comparison(model, manifold, test_loader, space_name="Analytic Sphere", num_samples=10):
+    model.eval()
+
+    # Smart unpacking to handle the dataloader format
+    batch = next(iter(test_loader))
+    if isinstance(batch, (list, tuple)) and len(batch) >= 3:
+        p1_batch, p2_batch, z_target_batch = batch[0], batch[1], batch[2]
+    else:
+        z_target_batch = batch[0]
+        p1_batch, p2_batch = z_target_batch[:, 0, :], z_target_batch[:, -1, :]
+
+    p1, p2, z_target = p1_batch[:num_samples], p2_batch[:num_samples], z_target_batch[:num_samples]
+
+    # Predict with NODE
+    t_steps = torch.linspace(0, 1, z_target.shape[1]).to(p1.device)
+    model_device = next(model.parameters()).device
+
+    with torch.no_grad():
+        pred_traj = model(p1.to(model_device), p2.to(model_device), t_steps.to(model_device))
+        z_pred = pred_traj[:, :, 0, :].cpu().numpy()  # Shape: [T, num_samples, 3]
+
+    z_target = z_target.detach().cpu().numpy()  # Shape: [num_samples, T, 3]
+
+    # Create plot
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Render Sphere Background
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x_sphere = np.outer(np.cos(u), np.sin(v))
+    y_sphere = np.outer(np.sin(u), np.sin(v))
+    z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))
+    ax.plot_surface(x_sphere, y_sphere, z_sphere, color='lightgray', alpha=0.15, edgecolor='none')
+    ax.plot(np.cos(u), np.sin(u), np.zeros_like(u), color='gray', linestyle=':', alpha=0.3)
+
+    for i in range(num_samples):
+        # Only label the first iteration to avoid legend spam
+        demo_label = 'Ideal Geodesic (Demo)' if i == 0 else ""
+        node_label = 'NODE Prediction' if i == 0 else ""
+        start_label = 'Start (p1)' if i == 0 else ""
+        goal_label = 'Goal (p2)' if i == 0 else ""
+
+        # Plot Teacher (Robot Demo)
+        ax.plot(z_target[i, :, 0], z_target[i, :, 1], z_target[i, :, 2],
+                'k--', label=demo_label, alpha=0.6, linewidth=2)
+
+        # Plot Student (NODE Prediction)
+        ax.plot(z_pred[:, i, 0], z_pred[:, i, 1], z_pred[:, i, 2],
+                'b-', linewidth=2, label=node_label, alpha=0.8)
+
+        # Markers for Start and Goal
+        p1_np = p1[i].detach().cpu().numpy()
+        p2_np = p2[i].detach().cpu().numpy()
+        ax.scatter(p1_np[0], p1_np[1], p1_np[2], marker='o', color='yellow', edgecolors='black', s=150,
+                   label="Expected Start")
+        ax.scatter(z_pred[0, i, 0], z_pred[0, i, 1], z_pred[0, i, 2], color='green', s=50, zorder=5,
+                   label="Predicted Start")
+        ax.scatter(p2_np[0], p2_np[1], p2_np[2], marker='*', color='yellow', edgecolors='black', s=250,
+                   label="Expected End")
+        ax.scatter(z_pred[-1, i, 0], z_pred[-1, i, 1], z_pred[-1, i, 2], color='red', s=50, zorder=5,
+                   label="Predicted End")
+
+        if i==0:
+            ax.legend(fontsize='small', loc='upper right')
+
+    ax.set_title(f"3D Predictions vs Ground Truth ({num_samples} samples)", pad=20, fontsize=14)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+    # plt.show()
+def visualize_sphere_random_points_comparison(model, manifold, test_loader, space_name="Analytic Sphere"):
+    model.eval()
+
+    print("Testing with random point in test set...")
+    batch = next(iter(test_loader))
+    if isinstance(batch, (list, tuple)) and len(batch) >= 3:
+        p1_batch, p2_batch, z_target_batch = batch[0], batch[1], batch[2]
+    else:
+        z_target_batch = batch[0]
+        p1_batch, p2_batch = z_target_batch[:, 0, :], z_target_batch[:, -1, :]
+
+    random_demo = random.randint(0, p1_batch.shape[0] - 1)
+    print("Random index: " + str(random_demo))
+
+    p1, p2, z_target = p1_batch[random_demo], p2_batch[random_demo], z_target_batch[random_demo]
+
+    # Run the NODE
+    p1_test, p2_test = p1, p2
+    t_steps = torch.linspace(0, 1, z_target.shape[0]).to(p1.device)
+    model_device = next(model.parameters()).device
+
+    with torch.no_grad():
+        prediction = model(p1_test.to(model_device), p2_test.to(model_device), t_steps.to(model_device))
+        z_path = prediction[:, :, 0].cpu().numpy()  # Shape [T, 1, 3]
+
+    z_path = z_path.squeeze()  # Shape [T, 3]
+    x, y, z = z_path[:, 0], z_path[:, 1], z_path[:, 2]
+
+    print(f"Start point pred: ({x[0]:.2f}, {y[0]:.2f}, {z[0]:.2f})")
+    print(f"Goal point pred: ({x[-1]:.2f}, {y[-1]:.2f}, {z[-1]:.2f})")
+
+    # Setup 3D Plot
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Render Sphere Background
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x_sphere = np.outer(np.cos(u), np.sin(v))
+    y_sphere = np.outer(np.sin(u), np.sin(v))
+    z_sphere = np.outer(np.ones(np.size(u)), np.cos(v))
+    ax.plot_surface(x_sphere, y_sphere, z_sphere, color='lightgray', alpha=0.15, edgecolor='none')
+    ax.plot(np.cos(u), np.sin(u), np.zeros_like(u), color='gray', linestyle=':', alpha=0.3)
+
+    # Plot True and Predicted Paths
+    z_target_np = z_target.detach().cpu().numpy()
+    ax.plot(x, y, z, label='Test Trajectory (Pred)', linewidth=3, color='blue', alpha=0.8)
+    ax.plot(z_target_np[:, 0], z_target_np[:, 1], z_target_np[:, 2],
+            'k--', label='Ideal Geodesic (Demo)', linewidth=2, color='black')
+
+    # Markers for Start and End points
+    p1_np = p1.detach().cpu().numpy()
+    p2_np = p2.detach().cpu().numpy()
+
+    ax.scatter(p1_np[0], p1_np[1], p1_np[2], marker='o', color='yellow', edgecolors='black', s=150,
+               label="Expected Start")
+    ax.scatter(x[0], y[0], z[0], color='green', s=50, zorder=5, label="Predicted Start")
+
+    ax.scatter(p2_np[0], p2_np[1], p2_np[2], marker='*', color='yellow', edgecolors='black', s=250,
+               label="Expected End")
+    ax.scatter(x[-1], y[-1], z[-1], color='red', s=50, zorder=5, label="Predicted End")
+
+    ax.set_title(f"Random Test Sample: {space_name}", pad=20, fontsize=14)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlim([-1.1, 1.1])
+    ax.set_ylim([-1.1, 1.1])
+    ax.set_zlim([-1.1, 1.1])
+    ax.legend(loc='upper right')
+
+    # Optional: Clean up grid panes for better visibility
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+
+    print("Successful.")
+    # plt.show()
+
 ### Basic plot fns for the toy_example dataset
 #Plot to check datasets
 def plot_trajectories(trajectory_list):
