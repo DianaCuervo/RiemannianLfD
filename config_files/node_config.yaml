@@ -1,4 +1,51 @@
 # config_files/node_config.yaml
+sphere:
+  default_shape:  # Toy might not have 'shapes', so we use a default key
+  # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
+  run_suffix: 'imitation_only'  # 'imitation_only' | 'energy_only' | 'energy_imitation'
+  # Model Architecture Parameters
+  architecture:
+    latent_dim: 3
+    hidden_dim: 128
+  # Integration Parameters (for the RK4 solver)
+  integration:
+    method: 'rk4'
+    step_size: 0.05
+  # Data Load and Preparation
+  dataset:
+    type: 'sphere'            # 'lasa' or 'toy'
+    shape_name: 'None'     # Used for finding the .mat or .p file
+    number_demos: 100       # the number of total demonstrations from sphere
+    time_steps: 50
+    save_dir: './node/data/sphere_processed'
+    train_rat: 0.70
+    val_rat: 0.15
+    model_dir: './models/node/sphere'
+    model_name: 'NODE_AnalyticSphere_RiemannianMSE'
+    model_train_curves_dir: './node/training/training_curves/sphere'
+    model_train_logs_dir: './node/training/training_logs/sphere'
+    model_test_results_dir: './node/evaluation/results/sphere'
+  # Training Hyperparameters (for the train loop!)
+  training:
+    learning_rate: 1.0e-4 #2.5e-3--> Optuna
+    lr_gamma: 0.1
+    lr_drop_fraction: 0.75
+    batch_size: 32
+    epochs: 2500
+    metric_scale_energy: 'metric_scale_energy_dummy'    # Energy loss scaling factor
+    safe_baseline: 'safe_baseline_dummy'                # Average Energy from demonstrations
+    metric_clamp_max: 1e6         # Centralized metric ceiling
+    metric_clamp_min: 1e-6        # Centralized metric ceiling
+    grad_clip_norm: 0.5           # Gradient clipping threshold
+    scheduler:
+      base_scale: 1.0   # 1e-4
+      ramp_start: 500      # Epoch when goal/energy pressure begins
+      ramp_length: 1000    # How many epochs it takes to reach max weights
+      w_imit_target: 1.0   # Constant multiplier for imitation
+      w_goal_start: 1.0    # What goal weight starts at when ramp begins
+      w_goal_target: 50.0  # What goal weight ramps up to
+      w_ener_target: 1.0   # What energy weight ramps up to
+
 toy:
   default_shape:  # Toy might not have 'shapes', so we use a default key
   # Model, logs, curves and test plots are saved as '<model_name>_<run_suffix>' (omit for '<model_name>')
