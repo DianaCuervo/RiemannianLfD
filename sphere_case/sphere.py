@@ -325,35 +325,39 @@ class SphereManifold:
     # -------------------------------------------------------------------------
     # 5. Rewritten embed fn
     # -------------------------------------------------------------------------
+
     def embed(self, points, jacobian=False):
         """
-        Analytic equivalent of VAE embed for the 3D Sphere.
-        Maps ambient 3D points exactly onto the unit sphere and calculates
-        the analytic Jacobian and Riemannian metric tensor.
+        Rigorously maps ambient 3D points (on or off the sphere) onto the unit
+        sphere and calculates the true analytic Jacobian and Riemannian metric
+        accounting for off-manifold scaling.
         """
         is_batched = points.dim() > 2
         if not is_batched:
-            points = points.unsqueeze(0)  # BxNx3
+            points = points.unsqueeze(0)  # Ensure BxNx3 format
 
-        # 1. Embed points onto the sphere surface
-        embedded = self.project_manifold(points)
+        B, N, D = points.shape
 
         if jacobian:
-            # 2. Compute the analytic Jacobian of the projection
-            # For f(x) = x / ||x||, on the unit sphere, J = I - x * x^T
-            B, N, D = embedded.shape
+            # 1. Compute norms and true unit direction vectors (embedded surface points)
+            norms = torch.norm(points, dim=-1, keepdim=True).clamp(min=1e-8)  # [B, N, 1]
+            embedded = points / norms  # [B, N, 3] (Strictly on S^2)
 
-            # Create an identity matrix [B, N, 3, 3]
+            # 2. Create Identity matrix [B, N, 3, 3]
             eye = torch.eye(D, device=points.device, dtype=points.dtype).view(1, 1, D, D).expand(B, N, -1, -1)
 
-            # Calculate outer product: x * x^T
-            # embedded is [B, N, 3]. unsqueeze(-1) -> [B, N, 3, 1]. unsqueeze(-2) -> [B, N, 1, 3]
-            xxT = torch.matmul(embedded.unsqueeze(-1), embedded.unsqueeze(-2))  # Result: [B, N, 3, 3]
+            # 3. Calculate outer product of the normalized points: x_hat * x_hat^T
+            xxT = torch.matmul(embedded.unsqueeze(-1), embedded.unsqueeze(-2))  # [B, N, 3, 3]
 
-            j = eye - xxT
+            # 4. True Generalized Jacobian: J = (1 / r) * (I - x_hat * x_hat^T)
+            # This correctly penalizes/scales points that have drifted off-manifold!
+            base_projection = eye - xxT
+            j = base_projection / norms.unsqueeze(-1)  # Scale by 1 / ||points||
 
-            # 3. Metric M = J^T * J. Since J is an orthogonal projection matrix, M = J.
-            metric = j.clone()
+            # 5. Metric Tensor M = J^T * J
+            # Since base_projection is a symmetric projection matrix (P^2 = P),
+            # J^T * J simplifies to (1 / r^2) * base_projection
+            metric = base_projection / (norms ** 2).unsqueeze(-1)
 
             if not is_batched:
                 embedded = embedded.squeeze(0)
@@ -363,9 +367,53 @@ class SphereManifold:
             return embedded, j, metric.detach().cpu().numpy()
 
         else:
+            # Just return the projected points if Jacobian isn't requested
+            embedded = self.project_manifold(points)
             if not is_batched:
                 embedded = embedded.squeeze(0)
             return embedded
+
+    # def embed(self, points, jacobian=False):
+    #     """
+    #     Analytic equivalent of VAE embed for the 3D Sphere.
+    #     Maps ambient 3D points exactly onto the unit sphere and calculates
+    #     the analytic Jacobian and Riemannian metric tensor.
+    #     """
+    #     is_batched = points.dim() > 2
+    #     if not is_batched:
+    #         points = points.unsqueeze(0)  # BxNx3
+    #
+    #     # 1. Embed points onto the sphere surface
+    #     embedded = self.project_manifold(points)
+    #
+    #     if jacobian:
+    #         # 2. Compute the analytic Jacobian of the projection
+    #         # For f(x) = x / ||x||, on the unit sphere, J = I - x * x^T
+    #         B, N, D = embedded.shape
+    #
+    #         # Create an identity matrix [B, N, 3, 3]
+    #         eye = torch.eye(D, device=points.device, dtype=points.dtype).view(1, 1, D, D).expand(B, N, -1, -1)
+    #
+    #         # Calculate outer product: x * x^T
+    #         # embedded is [B, N, 3]. unsqueeze(-1) -> [B, N, 3, 1]. unsqueeze(-2) -> [B, N, 1, 3]
+    #         xxT = torch.matmul(embedded.unsqueeze(-1), embedded.unsqueeze(-2))  # Result: [B, N, 3, 3]
+    #
+    #         j = eye - xxT
+    #
+    #         # 3. Metric M = J^T * J. Since J is an orthogonal projection matrix, M = J.
+    #         metric = j.clone()
+    #
+    #         if not is_batched:
+    #             embedded = embedded.squeeze(0)
+    #             j = j.squeeze(0)
+    #             metric = metric.squeeze(0)
+    #
+    #         return embedded, j, metric.detach().cpu().numpy()
+    #
+    #     else:
+    #         if not is_batched:
+    #             embedded = embedded.squeeze(0)
+    #         return embedded
 
 # -------------------------------------------------------------------------
 # 6. Rewritten get_M fn for NODE training

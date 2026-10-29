@@ -837,7 +837,7 @@ def train_sphere_node_energy_goal_imitation_riemannianmse_retractor_devpen(model
 
 def train_sphere_node_energy_goal_imitation_riemannianmse(model, manifold, train_loader, val_loader, node_cfg,
                                                           device='cpu'):
-    model, history = train_sphere_node_energy_goal_imitation_riemannianmse_retractor_devpen(model, manifold, train_loader, val_loader,
+    model, history = train_sphere_node_energy_goal_imitation_riemannianmse_original(model, manifold, train_loader, val_loader,
                                                                            node_cfg,
                                                                            device=device)
     return model, history
