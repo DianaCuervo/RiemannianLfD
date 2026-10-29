@@ -21,6 +21,42 @@ def embedded_curve_energy(vae, z_traj):
     delta = emb[:, 1:, :] - emb[:, :-1, :]  # Bx(T-1)xK
     return (delta ** 2).sum(dim=(1, 2)) * (T_steps - 1)
 
+
+def sphere_curve_energy(manifold, z_traj):
+    """
+    Computes the true Riemannian curve energy on the RAW trajectory z_traj,
+    honestly penalizing off-manifold drift using the generalized metric tensor.
+
+    z_traj: [T, B, D] latent/ambient trajectory. Returns shape [B].
+    """
+    T_steps, B, D = z_traj.shape
+
+    # 1. Compute raw velocities along the trajectory: v_t = z_{t+1} - z_t
+    # Shape: [T-1, B, D] -> permuted to [B, T-1, D]
+    velocity = (z_traj[1:] - z_traj[:-1]).permute(1, 0, 2)
+
+    # 2. Evaluate the metric tensor directly on the raw trajectory points (excluding the last point)
+    # Reshape points to [1, B*(T-1), D] to batch-process through embed
+    raw_points = z_traj[:-1].permute(1, 0, 2).reshape(1, B * (T_steps - 1), D)
+
+    # Get the true analytic metric tensor (keeping PyTorch gradients active)
+    _, _, metric_tensor = manifold.embed(raw_points, jacobian=True)
+    # metric_tensor shape: [1, B*(T-1), D, D] -> reshape to [B, T-1, D, D]
+    metric_tensor = metric_tensor.reshape(B, T_steps - 1, D, D)
+
+    # 3. Compute the quadratic form: v^T * M * v for each step
+    # velocity: [B, T-1, D, 1]
+    v_col = velocity.unsqueeze(-1)
+    v_row = velocity.unsqueeze(-2)
+
+    # Matrix multiplication: [B, T-1, 1, D] @ [B, T-1, D, D] @ [B, T-1, D, 1] -> [B, T-1, 1, 1]
+    step_energies = torch.matmul(v_row, torch.matmul(metric_tensor, v_col)).squeeze(-1).squeeze(-1)
+
+    # 4. Integrate/Sum across time steps (multiplied by T_steps - 1 to scale correctly)
+    curve_energies = 0.5 * step_energies.sum(dim=1) * (T_steps - 1)
+
+    return curve_energies
+
 # --- SCHEDULER based on Epochs ---
 def get_loss_weights_riemannianmse(epoch, base_scale=1e-4, ramp_start=500, ramp_length=2500,
                                    w_imit_target=1.0, w_goal_start=1.0, w_goal_target=50.0, w_ener_target=1.0):
@@ -953,7 +989,7 @@ def train_sphere_node_energy_goal_imitation_riemannianmse_nonullspace(model, man
 
             # --- ENERGY LOSS ---
             if w_energy > 0:
-                loss_energy = embedded_curve_energy(manifold, z_pred).mean() * METRIC_SCALE_ENERGY
+                loss_energy = sphere_curve_energy(manifold, z_pred).mean() * METRIC_SCALE_ENERGY
             else:
                 loss_energy = torch.tensor(0.0).to(device)
 
@@ -1025,7 +1061,7 @@ def train_sphere_node_energy_goal_imitation_riemannianmse_nonullspace(model, man
                     _, J_raw_val_pred, _ = get_M(manifold, z_pred.reshape(-1, D_val).clone())
                     J_raw_val_pred = torch.as_tensor(J_raw_val_pred, dtype=torch.float32, device=device)
                     J_val_pred = J_raw_val_pred.reshape(T_val, B_val, -1, D_val)
-                    val_ener += embedded_curve_energy(manifold, z_pred).mean().item() * METRIC_SCALE_ENERGY
+                    val_ener += sphere_curve_energy(manifold, z_pred).mean().item() * METRIC_SCALE_ENERGY
 
                     # Validation Goal
                     del_val_goal = z_pred[-1] - p2

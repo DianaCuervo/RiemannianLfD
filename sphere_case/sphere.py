@@ -325,7 +325,6 @@ class SphereManifold:
     # -------------------------------------------------------------------------
     # 5. Rewritten embed fn
     # -------------------------------------------------------------------------
-
     def embed(self, points, jacobian=False):
         """
         Rigorously maps ambient 3D points (on or off the sphere) onto the unit
@@ -364,11 +363,12 @@ class SphereManifold:
                 j = j.squeeze(0)
                 metric = metric.squeeze(0)
 
-            return embedded, j, metric.detach().cpu().numpy()
+            return embedded, j, metric
 
         else:
             # Just return the projected points if Jacobian isn't requested
-            embedded = self.project_manifold(points)
+            norms = torch.norm(points, dim=-1, keepdim=True).clamp(min=1e-8)
+            embedded = points / norms
             if not is_batched:
                 embedded = embedded.squeeze(0)
             return embedded
