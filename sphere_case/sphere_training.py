@@ -145,7 +145,7 @@ def train_sphere_node_energy_goal_imitation_riemannianmse_original(model, manifo
 
     start_time = time.time()
     print(f"\n{'=' * 140}")
-    print(f"Starting Training: {model_name} on {device.upper()}")
+    print(f"Starting Training: {model_name} on {device.upper()} (Original Training)")
     print(f"Epochs: {epochs} | Initial LR: {lr} | LR Drop at: {drop_epoch}")
     print(f"{'=' * 140}\n")
 
@@ -1355,7 +1355,7 @@ def train_sphere_node_energy_goal_imitation_euclideanmse(model, manifold, train_
 
 def train_sphere_node_energy_goal_imitation_riemannianmse(model, manifold, train_loader, val_loader, node_cfg,
                                                           device='cpu'):
-    model, history = train_sphere_node_energy_goal_imitation_euclideanmse(model, manifold, train_loader, val_loader,
+    model, history = train_sphere_node_energy_goal_imitation_riemannianmse_original(model, manifold, train_loader, val_loader,
                                                                            node_cfg,
                                                                            device=device)
     return model, history
