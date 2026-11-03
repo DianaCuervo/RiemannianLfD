@@ -1,0 +1,6 @@
+{
+    "trajectory_euclidean_mse": 0.022804986064632733,
+    "trajectory_geodesic_mse": 0.06978966171542804,
+    "goal_euclid_mse": 0.00026010992102480185,
+    "goal_geodesic_mse": 0.0007816183206159621
+}
